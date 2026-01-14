@@ -1,6 +1,6 @@
 {
   "name": "VSC-MCPServer",
-  "displayName": "MCP Server",
+  "displayName": "VSCode MCP Server",
   "description": "Exposes VSCode's semantic code understanding capabilities via MCP",
   "version": "0.1.0",
   "publisher": "CodingWithCalvin",
