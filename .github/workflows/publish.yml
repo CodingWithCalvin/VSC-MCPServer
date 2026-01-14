@@ -86,11 +86,17 @@ jobs:
     uses: CodingWithCalvin/.github/.github/workflows/bluesky-post.yml@main
     with:
       post_text: "🚀 VSC as MCP v${{ needs.publish.outputs.version }} has been released!\n\n[GitHub Release](https://github.com/CodingWithCalvin/VSC-MCPServer/releases/tag/v${{ needs.publish.outputs.version }})\n[VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.VSC-MCPServer)"
+      embed_url: "https://github.com/CodingWithCalvin/VSC-MCPServer"
+      embed_title: "VSC as MCP v${{ needs.publish.outputs.version }}"
+      embed_description: "Supercharge your AI coding assistants with VS Code's powerful language intelligence!"
     secrets: inherit
 
   linkedin:
     needs: [publish, release]
     uses: CodingWithCalvin/.github/.github/workflows/linkedin-post.yml@main
     with:
-      post_text: "🚀 VSC as MCP v${{ needs.publish.outputs.version }} has been released!\n\nGitHub Release: https://github.com/CodingWithCalvin/VSC-MCPServer/releases/tag/v${{ needs.publish.outputs.version }}\n\nVS Code Marketplace: https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.VSC-MCPServer"
+      post_text: "🚀 VSC as MCP v${{ needs.publish.outputs.version }} has been released!"
+      article_url: "https://github.com/CodingWithCalvin/VSC-MCPServer"
+      article_title: "VSC as MCP v${{ needs.publish.outputs.version }}"
+      article_description: "Supercharge your AI coding assistants with VS Code's powerful language intelligence!"
     secrets: inherit
