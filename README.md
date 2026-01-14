@@ -1,4 +1,4 @@
-# 🔌 MCP Server for VS Code
+# 🔌 VSC as MCP
 
 **🚀 Supercharge your AI coding assistants with VS Code's powerful language intelligence!**
 
@@ -60,7 +60,7 @@ A Visual Studio Code extension that exposes an MCP (Model Context Protocol) serv
 
 1. Open VS Code
 2. Go to **Extensions** (Ctrl+Shift+X)
-3. Search for "MCP Server"
+3. Search for "VSC as MCP"
 4. Click **Install**
 
 ### Manual Installation
@@ -167,6 +167,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ---
 
-**⭐ If you find MCP Server useful, please consider giving it a star! ⭐**
+**⭐ If you find VSC as MCP useful, please consider giving it a star! ⭐**
 
 *Made with ❤️ for the VS Code community by Coding With Calvin*
