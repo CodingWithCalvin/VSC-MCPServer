@@ -45,18 +45,6 @@ jobs:
           npm version ${{ inputs.version }} --no-git-tag-version --allow-same-version
           echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
 
-      - name: Commit version bump
-        env:
-          HUSKY: 0
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json
-          git commit -m "chore: bump version to ${{ steps.version.outputs.version }} [skip ci]"
-          git tag "v${{ steps.version.outputs.version }}"
-          git push
-          git push --tags
-
       - name: Package VSIX
         run: npx @vscode/vsce package -o CodingWithCalvin.VSC-MCPServer.vsix
 
