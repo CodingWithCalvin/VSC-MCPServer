@@ -46,10 +46,10 @@ jobs:
         run: npm run build
 
       - name: Package VSIX
-        run: npx @vscode/vsce package
+        run: npx @vscode/vsce package -o CodingWithCalvin.VSC-MCPServer.vsix
 
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@v4
         with:
           name: vsix
-          path: '*.vsix'
+          path: CodingWithCalvin.VSC-MCPServer.vsix
