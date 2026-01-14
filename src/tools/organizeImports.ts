@@ -1,0 +1,117 @@
+import * as vscode from 'vscode';
+import { z } from 'zod';
+import { rangeToJSON, ensureDocumentOpen } from '../adapters/vscodeAdapter';
+
+export const organizeImportsSchema = z.object({
+    uri: z.string().describe('File URI or absolute file path'),
+    dryRun: z
+        .boolean()
+        .optional()
+        .describe('Preview changes without applying them (default: false)'),
+});
+
+export interface TextEdit {
+    range: {
+        startLine: number;
+        startCharacter: number;
+        endLine: number;
+        endCharacter: number;
+    };
+    newText: string;
+}
+
+export async function organizeImports(
+    params: z.infer<typeof organizeImportsSchema>
+): Promise<{ success: boolean; edits?: TextEdit[]; message?: string }> {
+    // Handle both file:// URIs and plain paths
+    let uri: vscode.Uri;
+    if (params.uri.startsWith('file://')) {
+        uri = vscode.Uri.parse(params.uri);
+    } else {
+        uri = vscode.Uri.file(params.uri);
+    }
+
+    // Ensure document is open
+    await ensureDocumentOpen(uri);
+
+    // Try to get organize imports code action
+    const document = await vscode.workspace.openTextDocument(uri);
+    const fullRange = new vscode.Range(
+        document.positionAt(0),
+        document.positionAt(document.getText().length)
+    );
+
+    const codeActions = await vscode.commands.executeCommand<
+        (vscode.Command | vscode.CodeAction)[]
+    >('vscode.executeCodeActionProvider', uri, fullRange, vscode.CodeActionKind.SourceOrganizeImports);
+
+    if (!codeActions || codeActions.length === 0) {
+        return {
+            success: false,
+            message: 'Organize imports not available for this file',
+        };
+    }
+
+    // Find the organize imports action
+    const organizeAction = codeActions.find(
+        (action) =>
+            'kind' in action &&
+            action.kind &&
+            action.kind.value === vscode.CodeActionKind.SourceOrganizeImports.value
+    ) as vscode.CodeAction | undefined;
+
+    if (!organizeAction || !organizeAction.edit) {
+        return {
+            success: false,
+            message: 'Organize imports action not found or has no edits',
+        };
+    }
+
+    const workspaceEdit = organizeAction.edit;
+    const entries = workspaceEdit.entries();
+
+    if (entries.length === 0) {
+        return {
+            success: false,
+            message: 'No import changes needed',
+        };
+    }
+
+    // Extract the edits for preview
+    const allEdits: TextEdit[] = [];
+    for (const [, edits] of entries) {
+        for (const edit of edits) {
+            if (edit instanceof vscode.TextEdit) {
+                allEdits.push({
+                    range: rangeToJSON(edit.range),
+                    newText: edit.newText,
+                });
+            }
+        }
+    }
+
+    // If dry-run, just return the edits without applying
+    if (params.dryRun) {
+        return {
+            success: true,
+            edits: allEdits,
+            message: `Dry-run: ${allEdits.length} import change(s) would be applied`,
+        };
+    }
+
+    // Apply the edits
+    const applied = await vscode.workspace.applyEdit(workspaceEdit);
+
+    if (applied) {
+        return {
+            success: true,
+            edits: allEdits,
+            message: `Successfully organized imports with ${allEdits.length} change(s)`,
+        };
+    } else {
+        return {
+            success: false,
+            message: 'Failed to apply import changes',
+        };
+    }
+}

@@ -1,0 +1,17 @@
+# Auto detect text files and normalize line endings
+* text=auto eol=crlf
+
+# TypeScript/JavaScript source files
+*.ts text eol=crlf
+*.tsx text eol=crlf
+*.js text eol=crlf
+*.jsx text eol=crlf
+*.mjs text eol=crlf
+*.cjs text eol=crlf
+
+# Config files (use LF for cross-platform tools)
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.sh text eol=lf

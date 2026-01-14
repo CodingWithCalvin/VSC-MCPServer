@@ -1,0 +1,123 @@
+{
+  "name": "VSC-MCPServer",
+  "displayName": "MCP Server",
+  "description": "Exposes VSCode's semantic code understanding capabilities via MCP",
+  "version": "0.1.0",
+  "publisher": "CodingWithCalvin",
+  "license": "SEE LICENSE IN LICENSE",
+  "icon": "resources/icon.png",
+  "galleryBanner": {
+    "color": "#007ACC",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CodingWithCalvin/VSC-MCPServer"
+  },
+  "homepage": "https://github.com/CodingWithCalvin/VSC-MCPServer",
+  "bugs": {
+    "url": "https://github.com/CodingWithCalvin/VSC-MCPServer/issues"
+  },
+  "sponsor": {
+    "url": "https://www.buymeacoffee.com/CodingWithCalvin"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "mcp",
+    "model context protocol",
+    "ai",
+    "language server",
+    "code intelligence",
+    "go to definition",
+    "find references",
+    "completions",
+    "claude",
+    "copilot",
+    "cursor"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onUri"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "codingwithcalvin.mcp.start",
+        "title": "MCP Server: Start"
+      },
+      {
+        "command": "codingwithcalvin.mcp.stop",
+        "title": "MCP Server: Stop"
+      },
+      {
+        "command": "codingwithcalvin.mcp.restart",
+        "title": "MCP Server: Restart"
+      },
+      {
+        "command": "codingwithcalvin.mcp.showTools",
+        "title": "MCP Server: Show Available Tools"
+      }
+    ],
+    "configuration": {
+      "title": "CodingWithCalvin MCP Server",
+      "properties": {
+        "codingwithcalvin.mcp.autoStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically start MCP server when VSCode launches"
+        },
+        "codingwithcalvin.mcp.port": {
+          "type": "number",
+          "default": 4000,
+          "description": "Port for the MCP server (0 for auto-assign)"
+        },
+        "codingwithcalvin.mcp.bindAddress": {
+          "type": "string",
+          "default": "127.0.0.1",
+          "description": "Address to bind the MCP server (localhost only for security)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "node esbuild.config.js",
+    "watch": "node esbuild.config.js --watch",
+    "lint": "eslint src --ext ts",
+    "prepare": "husky",	
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "npm run build && node ./out/test/runIntegrationTests.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "express": "^4.18.2",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+	"@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitest/ui": "^1.1.0",
+    "@vscode/test-electron": "^2.3.8",
+    "esbuild": "^0.19.0",
+    "eslint": "^8.0.0",
+	  "husky": "^9.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.1.0",
+    "@vitest/coverage-v8": "^1.1.0"
+  }
+}

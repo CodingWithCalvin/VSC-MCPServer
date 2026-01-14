@@ -1,0 +1,32 @@
+# EditorConfig - https://editorconfig.org
+
+root = true
+
+# All files
+[*]
+indent_style = space
+indent_size = 4
+end_of_line = crlf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# TypeScript/JavaScript files
+[*.{ts,tsx,js,jsx,mjs,cjs}]
+indent_size = 4
+
+# JSON/YAML files
+[*.{json,yml,yaml}]
+indent_size = 2
+
+# Markdown files
+[*.md]
+trim_trailing_whitespace = false
+
+# Package files
+[package.json]
+indent_size = 2
+
+# Config files (use LF for cross-platform tools)
+[*.{yml,yaml,sh}]
+end_of_line = lf
