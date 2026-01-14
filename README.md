@@ -9,10 +9,10 @@ A Visual Studio Code extension that exposes an MCP (Model Context Protocol) serv
 [![License](https://img.shields.io/github/license/CodingWithCalvin/VSC-MCPServer?style=for-the-badge)](LICENSE)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/CodingWithCalvin/VSC-MCPServer/build.yml?style=for-the-badge)](https://github.com/CodingWithCalvin/VSC-MCPServer/actions/workflows/build.yml)
 
-[![VS Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/CodingWithCalvin.codingwithcalvin-mcpserver?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.codingwithcalvin-mcpserver)
-[![VS Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/CodingWithCalvin.codingwithcalvin-mcpserver?style=for-the-badge)](https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.codingwithcalvin-mcpserver)
-[![VS Marketplace Downloads](https://img.shields.io/visual-studio-marketplace/d/CodingWithCalvin.codingwithcalvin-mcpserver?style=for-the-badge)](https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.codingwithcalvin-mcpserver)
-[![VS Marketplace Rating](https://img.shields.io/visual-studio-marketplace/r/CodingWithCalvin.codingwithcalvin-mcpserver?style=for-the-badge)](https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.codingwithcalvin-mcpserver)
+[![VS Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/CodingWithCalvin.VSC-MCPServer?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.VSC-MCPServer)
+[![VS Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/CodingWithCalvin.VSC-MCPServer?style=for-the-badge)](https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.VSC-MCPServer)
+[![VS Marketplace Downloads](https://img.shields.io/visual-studio-marketplace/d/CodingWithCalvin.VSC-MCPServer?style=for-the-badge)](https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.VSC-MCPServer)
+[![VS Marketplace Rating](https://img.shields.io/visual-studio-marketplace/r/CodingWithCalvin.VSC-MCPServer?style=for-the-badge)](https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.VSC-MCPServer)
 
 ---
 
@@ -56,7 +56,7 @@ A Visual Studio Code extension that exposes an MCP (Model Context Protocol) serv
 
 ### From VS Code Marketplace
 
-[![VS Marketplace](https://img.shields.io/badge/VS%20Code%20Marketplace-MCP%20Server-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.codingwithcalvin-mcpserver)
+[![VS Marketplace](https://img.shields.io/badge/VS%20Code%20Marketplace-MCP%20Server-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.VSC-MCPServer)
 
 1. Open VS Code
 2. Go to **Extensions** (Ctrl+Shift+X)
@@ -68,7 +68,7 @@ A Visual Studio Code extension that exposes an MCP (Model Context Protocol) serv
 Download the latest `.vsix` from the [Releases](https://github.com/CodingWithCalvin/VSC-MCPServer/releases) page:
 
 ```bash
-code --install-extension codingwithcalvin-mcpserver-x.x.x.vsix
+code --install-extension CodingWithCalvin.VSC-MCPServer.vsix
 ```
 
 ---
