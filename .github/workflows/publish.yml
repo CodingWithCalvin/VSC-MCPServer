@@ -90,11 +90,3 @@ jobs:
       embed_description: "Supercharge your AI coding assistants with VS Code's powerful language intelligence!"
     secrets: inherit
 
-  linkedin:
-    needs: [publish, release]
-    uses: CodingWithCalvin/.github/.github/workflows/linkedin-post.yml@main
-    with:
-      post_text: "🚀 VSC as MCP v${{ needs.publish.outputs.version }} has been released!"
-      article_title: "VSC as MCP v${{ needs.publish.outputs.version }}"
-      article_description: "Supercharge your AI coding assistants with VS Code's powerful language intelligence!"
-    secrets: inherit
