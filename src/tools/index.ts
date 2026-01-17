@@ -28,6 +28,32 @@ import { formatRange, formatRangeSchema } from './formatRange';
 import { organizeImports, organizeImportsSchema } from './organizeImports';
 import { renameSymbol, renameSymbolSchema } from './renameSymbol';
 import { applyCodeAction, applyCodeActionSchema } from './applyCodeAction';
+import { previewUrl, previewUrlSchema } from './previewUrl';
+import { listDirectory, listDirectorySchema } from './listDirectory';
+import { focusEditor, focusEditorSchema } from './focusEditor';
+import { textEditor, textEditorSchema } from './textEditor';
+import {
+    executeCommand,
+    executeCommandSchema,
+    getTerminalOutput,
+    getTerminalOutputSchema,
+} from './commandExecution';
+import {
+    listVSCodeCommands,
+    listVSCodeCommandsSchema,
+    executeVSCodeCommand,
+    executeVSCodeCommandSchema,
+} from './vscodeCommands';
+import {
+    listDebugSessions,
+    listDebugSessionsSchema,
+    startDebugSession,
+    startDebugSessionSchema,
+    restartDebugSession,
+    restartDebugSessionSchema,
+    stopDebugSession,
+    stopDebugSessionSchema,
+} from './debugSessions';
 
 // Tool definition type for MCP
 interface ToolDefinition {
@@ -315,6 +341,91 @@ registerTool(
     'Apply a specific code action (quick fix or refactoring) by title (supports dry-run)',
     applyCodeActionSchema,
     applyCodeAction as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+// Workflow/editor tools
+registerTool(
+    'execute_command',
+    'Execute a shell command (unsafe; gated by configuration)',
+    executeCommandSchema,
+    executeCommand as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'get_terminal_output',
+    'Get output for a previously started execute_command process id',
+    getTerminalOutputSchema,
+    getTerminalOutput as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'preview_url',
+    'Open a URL in VS Code (Simple Browser) or externally',
+    previewUrlSchema,
+    previewUrl as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'text_editor',
+    'Basic file operations: view, replace, insert, create, undo',
+    textEditorSchema,
+    textEditor as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'list_directory',
+    'List directory contents as a tree',
+    listDirectorySchema,
+    listDirectory as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'focus_editor',
+    'Open a file and focus a specific range in the editor',
+    focusEditorSchema,
+    focusEditor as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'list_debug_sessions',
+    'List active debug sessions',
+    listDebugSessionsSchema,
+    listDebugSessions as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'start_debug_session',
+    'Start a new debug session from a JSON debug configuration',
+    startDebugSessionSchema,
+    startDebugSession as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'restart_debug_session',
+    'Restart a running debug session by id',
+    restartDebugSessionSchema,
+    restartDebugSession as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'stop_debug_session',
+    'Stop a debug session by id or stop all sessions',
+    stopDebugSessionSchema,
+    stopDebugSession as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'list_vscode_commands',
+    'List available VS Code command ids',
+    listVSCodeCommandsSchema,
+    listVSCodeCommands as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'execute_vscode_command',
+    'Execute a VS Code command (unsafe; gated by configuration)',
+    executeVSCodeCommandSchema,
+    executeVSCodeCommand as (params: Record<string, unknown>) => Promise<unknown>
 );
 
 // Export functions

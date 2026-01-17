@@ -16,6 +16,8 @@ export class MockRange {
     ) {}
 }
 
+export class MockSelection extends MockRange {}
+
 export class MockUri {
     constructor(public fsPath: string) {}
 
@@ -228,6 +230,7 @@ export class MockSemanticTokensLegend {
 export const mockVscode = {
     Position: MockPosition,
     Range: MockRange,
+    Selection: MockSelection,
     Uri: MockUri,
     TextEdit: MockTextEdit,
     WorkspaceEdit: MockWorkspaceEdit,
@@ -342,25 +345,55 @@ export const mockVscode = {
     },
 
     workspace: {
+        getConfiguration: vi.fn().mockReturnValue({
+            get: vi.fn((_key: string, defaultValue: any) => defaultValue),
+            update: vi.fn(),
+        }),
         openTextDocument: vi.fn().mockImplementation((uri: MockUri) => {
             return Promise.resolve(new MockTextDocument(uri, 'typescript', 1, ''));
         }),
         applyEdit: vi.fn().mockResolvedValue(true),
         workspaceFolders: [{ uri: MockUri.file('/test/workspace'), name: 'test-workspace' }],
+        getWorkspaceFolder: vi.fn(),
         findFiles: vi.fn(),
         findTextInFiles: vi.fn(),
         asRelativePath: vi.fn((uri: MockUri) => uri.fsPath.replace('/test/workspace/', '')),
         textDocuments: [],
+        fs: {
+            writeFile: vi.fn().mockResolvedValue(undefined),
+        },
     },
 
     commands: {
         executeCommand: vi.fn(),
+        getCommands: vi.fn().mockResolvedValue([]),
     },
 
     window: {
         showInformationMessage: vi.fn(),
         showErrorMessage: vi.fn(),
         showWarningMessage: vi.fn(),
+        showTextDocument: vi.fn().mockResolvedValue({
+            selection: undefined,
+            revealRange: vi.fn(),
+        }),
+    },
+
+    env: {
+        openExternal: vi.fn().mockResolvedValue(true),
+        clipboard: {
+            writeText: vi.fn().mockResolvedValue(undefined),
+        },
+    },
+
+    TextEditorRevealType: {
+        InCenter: 0,
+    },
+
+    debug: {
+        sessions: [] as any[],
+        startDebugging: vi.fn().mockResolvedValue(true),
+        stopDebugging: vi.fn().mockResolvedValue(true),
     },
 };
 

@@ -6,6 +6,7 @@ export interface MCPServerConfig {
     bindAddress: string;
     allowRemoteConnections: boolean;
     authToken: string;
+    enableUnsafeTools: boolean;
 }
 
 export function getConfiguration(): MCPServerConfig {
@@ -17,6 +18,7 @@ export function getConfiguration(): MCPServerConfig {
         bindAddress: config.get<string>('bindAddress', '127.0.0.1'),
         allowRemoteConnections: config.get<boolean>('allowRemoteConnections', false),
         authToken: config.get<string>('authToken', ''),
+        enableUnsafeTools: config.get<boolean>('enableUnsafeTools', false),
     };
 }
 

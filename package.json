@@ -96,6 +96,11 @@
           "type": "string",
           "default": "",
           "description": "Optional bearer token for HTTP requests. If set, clients must send: Authorization: Bearer <token>."
+        },
+        "codingwithcalvin.mcp.enableUnsafeTools": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable unsafe tools like execute_command and execute_vscode_command. WARNING: these allow arbitrary command execution."
         }
       }
     }
