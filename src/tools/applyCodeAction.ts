@@ -38,12 +38,9 @@ export async function applyCodeAction(
     params: z.infer<typeof applyCodeActionSchema>
 ): Promise<{ success: boolean; changes?: FileEdit[]; message?: string }> {
     // Handle both file:// URIs and plain paths
-    let uri: vscode.Uri;
-    if (params.uri.startsWith('file://')) {
-        uri = vscode.Uri.parse(params.uri);
-    } else {
-        uri = vscode.Uri.file(params.uri);
-    }
+    const uri = params.uri.startsWith('file://')
+        ? vscode.Uri.parse(params.uri)
+        : vscode.Uri.file(params.uri);
 
     // Ensure document is open
     await ensureDocumentOpen(uri);
@@ -78,9 +75,14 @@ export async function applyCodeAction(
         };
     }
 
+    // vscode.executeCodeActionProvider can return either a Command or a CodeAction.
+    // - Command: { title, command: string, arguments?: any[] }
+    // - CodeAction: may have edit and/or command (Command object)
+
     // Handle Command type actions
-    if ('command' in action && typeof action.command === 'string') {
-        // It's a Command - we can't preview these, and applying them might not be edit-based
+    if (!('kind' in action)) {
+        const commandAction = action as vscode.Command;
+
         if (params.dryRun) {
             return {
                 success: false,
@@ -88,25 +90,23 @@ export async function applyCodeAction(
             };
         }
 
-        // Execute the command
-        await vscode.commands.executeCommand(action.command, ...(action.arguments || []));
+        await vscode.commands.executeCommand(
+            commandAction.command,
+            ...(commandAction.arguments || [])
+        );
         return {
             success: true,
             message: `Executed command action "${params.actionTitle}"`,
         };
     }
 
-    // Handle CodeAction type with edit
-    if ('kind' in action && action.edit) {
-        const workspaceEdit = action.edit;
-        const entries = workspaceEdit.entries();
+    // Handle CodeAction
+    const codeAction = action as vscode.CodeAction;
 
-        if (entries.length === 0) {
-            return {
-                success: false,
-                message: 'Code action has no edits to apply',
-            };
-        }
+    // If the action has edits, we can preview/apply them.
+    if (codeAction.edit) {
+        const workspaceEdit = codeAction.edit;
+        const entries = workspaceEdit.entries();
 
         // Extract all changes for preview
         const fileEdits: FileEdit[] = [];
@@ -128,7 +128,6 @@ export async function applyCodeAction(
 
         const totalEdits = fileEdits.reduce((sum, file) => sum + file.edits.length, 0);
 
-        // If dry-run, just return the changes without applying
         if (params.dryRun) {
             return {
                 success: true,
@@ -137,33 +136,51 @@ export async function applyCodeAction(
             };
         }
 
-        // Apply the edits
         const applied = await vscode.workspace.applyEdit(workspaceEdit);
-
-        if (applied) {
-            // Execute associated command if present
-            if (action.command) {
-                await vscode.commands.executeCommand(
-                    action.command.command,
-                    ...(action.command.arguments || [])
-                );
-            }
-
-            return {
-                success: true,
-                changes: fileEdits,
-                message: `Successfully applied code action in ${fileEdits.length} file(s) with ${totalEdits} change(s)`,
-            };
-        } else {
+        if (!applied) {
             return {
                 success: false,
                 message: 'Failed to apply code action edits',
             };
         }
+
+        // Execute associated command if present
+        if (codeAction.command) {
+            await vscode.commands.executeCommand(
+                codeAction.command.command,
+                ...(codeAction.command.arguments || [])
+            );
+        }
+
+        return {
+            success: true,
+            changes: fileEdits,
+            message: `Successfully applied code action in ${fileEdits.length} file(s) with ${totalEdits} change(s)`,
+        };
+    }
+
+    // Some code actions are command-only (no WorkspaceEdit). We can execute but cannot preview.
+    if (codeAction.command) {
+        if (params.dryRun) {
+            return {
+                success: false,
+                message: `Cannot preview code action "${params.actionTitle}" because it has no WorkspaceEdit (command-only action).`,
+            };
+        }
+
+        await vscode.commands.executeCommand(
+            codeAction.command.command,
+            ...(codeAction.command.arguments || [])
+        );
+
+        return {
+            success: true,
+            message: `Executed code action "${params.actionTitle}" (command-only)`,
+        };
     }
 
     return {
         success: false,
-        message: 'Code action format not recognized',
+        message: 'Code action has neither edits nor an executable command',
     };
 }

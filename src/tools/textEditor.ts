@@ -68,12 +68,20 @@ export async function textEditor(
         workspaceEdit.set(uri, [edit]);
 
         const applied = await vscode.workspace.applyEdit(workspaceEdit);
-        return applied
-            ? { success: true, message: params.action === 'insert' ? 'Text inserted' : 'Text replaced' }
-            : { success: false, message: 'Failed to apply edit' };
+        if (!applied) {
+            return { success: false, message: 'Failed to apply edit' };
+        }
+
+        // Persist changes to disk. applyEdit does not save automatically.
+        const saved = await document.save();
+
+        const verb = params.action === 'insert' ? 'Text inserted' : 'Text replaced';
+        return {
+            success: true,
+            message: saved ? `${verb} (saved)` : `${verb} (NOT saved)`,
+        };
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, message: errorMessage };
     }
 }
-
