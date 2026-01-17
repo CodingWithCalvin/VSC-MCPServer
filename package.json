@@ -107,6 +107,11 @@
           "type": "boolean",
           "default": true,
           "description": "Use VS Code's built-in findTextInFiles API for search_workspace_text when available (fast). If disabled or unavailable, a slower fallback search is used."
+        },
+        "codingwithcalvin.mcp.autoSaveAfterToolEdits": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically save files to disk after edit-applying tools run (format_document, format_range, organize_imports, rename_symbol, apply_code_action)."
         }
       }
     }

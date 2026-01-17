@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { z } from 'zod';
-import { ensureDocumentOpen } from '../adapters/vscodeAdapter';
+import { ensureDocumentOpen, rangeToJSON } from '../adapters/vscodeAdapter';
+import { getConfiguration } from '../config/settings';
 
 export const textEditorSchema = z.object({
     action: z
@@ -13,6 +14,10 @@ export const textEditorSchema = z.object({
     endLine: z.number().optional().describe('End line (0-based)'),
     endCharacter: z.number().optional().describe('End character (0-based)'),
     text: z.string().optional().describe('Replacement/insert text'),
+    dryRun: z
+        .boolean()
+        .optional()
+        .describe('Preview changes without applying them (default: false)'),
 });
 
 function toUri(uriOrPath: string): vscode.Uri {
@@ -26,11 +31,30 @@ function requireField<T>(value: T | undefined, name: string): T {
     return value;
 }
 
+export interface TextEdit {
+    range: {
+        startLine: number;
+        startCharacter: number;
+        endLine: number;
+        endCharacter: number;
+    };
+    newText: string;
+}
+
 export async function textEditor(
     params: z.infer<typeof textEditorSchema>
-): Promise<{ success: boolean; message?: string; uri?: string; content?: string }> {
+): Promise<{
+    success: boolean;
+    message?: string;
+    uri?: string;
+    content?: string;
+    edits?: TextEdit[];
+}> {
     try {
         if (params.action === 'undo') {
+            if (params.dryRun) {
+                return { success: true, message: 'Dry-run: Would execute undo' };
+            }
             await vscode.commands.executeCommand('undo');
             return { success: true, message: 'Undo executed' };
         }
@@ -40,6 +64,14 @@ export async function textEditor(
 
         if (params.action === 'create') {
             const content = requireField(params.content, 'content');
+            if (params.dryRun) {
+                return {
+                    success: true,
+                    message: 'Dry-run: File would be created',
+                    uri: uri.toString(),
+                    content,
+                };
+            }
             const bytes = new TextEncoder().encode(content);
             await vscode.workspace.fs.writeFile(uri, bytes);
             return { success: true, message: 'File created', uri: uri.toString() };
@@ -63,6 +95,17 @@ export async function textEditor(
             new vscode.Position(endLine, endCharacter)
         );
 
+        const edits: TextEdit[] = [{ range: rangeToJSON(range), newText: text }];
+
+        if (params.dryRun) {
+            const verb = params.action === 'insert' ? 'insert' : 'replace';
+            return {
+                success: true,
+                edits,
+                message: `Dry-run: Would ${verb} text`,
+            };
+        }
+
         const edit = vscode.TextEdit.replace(range, text);
         const workspaceEdit = new vscode.WorkspaceEdit();
         workspaceEdit.set(uri, [edit]);
@@ -72,13 +115,18 @@ export async function textEditor(
             return { success: false, message: 'Failed to apply edit' };
         }
 
-        // Persist changes to disk. applyEdit does not save automatically.
-        const saved = await document.save();
+        const config = getConfiguration();
+        const saved = config.autoSaveAfterToolEdits ? await document.save() : false;
 
         const verb = params.action === 'insert' ? 'Text inserted' : 'Text replaced';
         return {
             success: true,
-            message: saved ? `${verb} (saved)` : `${verb} (NOT saved)`,
+            edits,
+            message: config.autoSaveAfterToolEdits
+                ? saved
+                    ? `${verb} (saved)`
+                    : `${verb} (save failed)`
+                : `${verb} (not saved)`,
         };
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);

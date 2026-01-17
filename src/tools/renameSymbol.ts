@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { rangeToJSON, ensureDocumentOpen } from '../adapters/vscodeAdapter';
+import { getConfiguration } from '../config/settings';
+import { saveUris } from '../utils/autoSave';
 
 export const renameSymbolSchema = z.object({
     uri: z.string().describe('File URI or absolute file path'),
@@ -30,12 +32,9 @@ export async function renameSymbol(
     params: z.infer<typeof renameSymbolSchema>
 ): Promise<{ success: boolean; changes?: FileEdit[]; message?: string }> {
     // Handle both file:// URIs and plain paths
-    let uri: vscode.Uri;
-    if (params.uri.startsWith('file://')) {
-        uri = vscode.Uri.parse(params.uri);
-    } else {
-        uri = vscode.Uri.file(params.uri);
-    }
+    const uri = params.uri.startsWith('file://')
+        ? vscode.Uri.parse(params.uri)
+        : vscode.Uri.file(params.uri);
 
     // Ensure document is open
     await ensureDocumentOpen(uri);
@@ -97,16 +96,21 @@ export async function renameSymbol(
     // Apply the edits
     const applied = await vscode.workspace.applyEdit(workspaceEdit);
 
-    if (applied) {
-        return {
-            success: true,
-            changes: fileEdits,
-            message: `Successfully renamed symbol in ${fileEdits.length} file(s) with ${totalEdits} change(s)`,
-        };
-    } else {
+    if (!applied) {
         return {
             success: false,
             message: 'Failed to apply rename changes',
         };
     }
+
+    const config = getConfiguration();
+    if (config.autoSaveAfterToolEdits) {
+        await saveUris(entries.map(([u]) => u));
+    }
+
+    return {
+        success: true,
+        changes: fileEdits,
+        message: `Successfully renamed symbol in ${fileEdits.length} file(s) with ${totalEdits} change(s)${config.autoSaveAfterToolEdits ? ' (saved)' : ''}`,
+    };
 }

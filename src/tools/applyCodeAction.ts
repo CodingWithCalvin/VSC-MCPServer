@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { rangeToJSON, ensureDocumentOpen } from '../adapters/vscodeAdapter';
+import { getConfiguration } from '../config/settings';
+import { saveUris } from '../utils/autoSave';
 
 export const applyCodeActionSchema = z.object({
     uri: z.string().describe('File URI or absolute file path'),
@@ -37,6 +39,8 @@ export interface FileEdit {
 export async function applyCodeAction(
     params: z.infer<typeof applyCodeActionSchema>
 ): Promise<{ success: boolean; changes?: FileEdit[]; message?: string }> {
+    const config = getConfiguration();
+
     // Handle both file:// URIs and plain paths
     const uri = params.uri.startsWith('file://')
         ? vscode.Uri.parse(params.uri)
@@ -144,6 +148,11 @@ export async function applyCodeAction(
             };
         }
 
+        // Auto-save files if enabled
+        if (config.autoSaveAfterToolEdits) {
+            await saveUris(entries.map(([u]) => u));
+        }
+
         // Execute associated command if present
         if (codeAction.command) {
             await vscode.commands.executeCommand(
@@ -155,7 +164,7 @@ export async function applyCodeAction(
         return {
             success: true,
             changes: fileEdits,
-            message: `Successfully applied code action in ${fileEdits.length} file(s) with ${totalEdits} change(s)`,
+            message: `Successfully applied code action in ${fileEdits.length} file(s) with ${totalEdits} change(s)${config.autoSaveAfterToolEdits ? ' (saved)' : ''}`,
         };
     }
 

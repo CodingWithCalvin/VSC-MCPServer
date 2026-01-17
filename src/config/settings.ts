@@ -13,6 +13,11 @@ export interface MCPServerConfig {
      * If disabled (or unavailable), search_workspace_text falls back to a slower implementation.
      */
     useFindTextInFiles: boolean;
+
+    /**
+     * If true, tools that apply WorkspaceEdits will also save the affected documents to disk.
+     */
+    autoSaveAfterToolEdits: boolean;
 }
 
 export function getConfiguration(): MCPServerConfig {
@@ -26,6 +31,7 @@ export function getConfiguration(): MCPServerConfig {
         authToken: config.get<string>('authToken', ''),
         enableUnsafeTools: config.get<boolean>('enableUnsafeTools', false),
         useFindTextInFiles: config.get<boolean>('useFindTextInFiles', true),
+        autoSaveAfterToolEdits: config.get<boolean>('autoSaveAfterToolEdits', true),
     };
 }
 

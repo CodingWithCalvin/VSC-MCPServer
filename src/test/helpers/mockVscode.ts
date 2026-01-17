@@ -42,6 +42,8 @@ export class MockTextDocument {
         private content: string
     ) {}
 
+    save = vi.fn().mockResolvedValue(true);
+
     getText(): string {
         return this.content;
     }
@@ -345,10 +347,10 @@ export const mockVscode = {
     },
 
     workspace: {
-        getConfiguration: vi.fn().mockReturnValue({
+        getConfiguration: vi.fn().mockImplementation(() => ({
             get: vi.fn((_key: string, defaultValue: any) => defaultValue),
             update: vi.fn(),
-        }),
+        })),
         openTextDocument: vi.fn().mockImplementation((uri: MockUri) => {
             return Promise.resolve(new MockTextDocument(uri, 'typescript', 1, ''));
         }),
@@ -402,4 +404,17 @@ export const mockVscode = {
  */
 export function resetMocks() {
     vi.clearAllMocks();
+
+    // Ensure key mocks keep a safe default implementation after clearAllMocks.
+    mockVscode.workspace.getConfiguration.mockImplementation(() => ({
+        get: vi.fn((_key: string, defaultValue: any) => defaultValue),
+        update: vi.fn(),
+    }));
+
+    mockVscode.workspace.openTextDocument.mockImplementation((uri: MockUri) => {
+        return Promise.resolve(new MockTextDocument(uri, 'typescript', 1, ''));
+    });
+
+    mockVscode.workspace.applyEdit.mockResolvedValue(true);
+    mockVscode.workspace.fs.writeFile.mockResolvedValue(undefined);
 }

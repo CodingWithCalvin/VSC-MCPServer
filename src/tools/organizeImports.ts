@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { rangeToJSON, ensureDocumentOpen } from '../adapters/vscodeAdapter';
+import { getConfiguration } from '../config/settings';
+import { saveUris } from '../utils/autoSave';
 
 export const organizeImportsSchema = z.object({
     uri: z.string().describe('File URI or absolute file path'),
@@ -24,12 +26,9 @@ export async function organizeImports(
     params: z.infer<typeof organizeImportsSchema>
 ): Promise<{ success: boolean; edits?: TextEdit[]; message?: string }> {
     // Handle both file:// URIs and plain paths
-    let uri: vscode.Uri;
-    if (params.uri.startsWith('file://')) {
-        uri = vscode.Uri.parse(params.uri);
-    } else {
-        uri = vscode.Uri.file(params.uri);
-    }
+    const uri = params.uri.startsWith('file://')
+        ? vscode.Uri.parse(params.uri)
+        : vscode.Uri.file(params.uri);
 
     // Ensure document is open
     await ensureDocumentOpen(uri);
@@ -108,16 +107,21 @@ export async function organizeImports(
     // Apply the edits
     const applied = await vscode.workspace.applyEdit(workspaceEdit);
 
-    if (applied) {
-        return {
-            success: true,
-            edits: allEdits,
-            message: `Successfully organized imports with ${allEdits.length} change(s)`,
-        };
-    } else {
+    if (!applied) {
         return {
             success: false,
             message: 'Failed to apply import changes',
         };
     }
+
+    const config = getConfiguration();
+    if (config.autoSaveAfterToolEdits) {
+        await saveUris(entries.map(([u]) => u));
+    }
+
+    return {
+        success: true,
+        edits: allEdits,
+        message: `Successfully organized imports with ${allEdits.length} change(s)${config.autoSaveAfterToolEdits ? ' (saved)' : ''}`,
+    };
 }
