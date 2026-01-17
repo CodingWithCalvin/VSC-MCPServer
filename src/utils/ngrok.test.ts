@@ -58,5 +58,37 @@ describe('getNgrokPublicUrl', () => {
             await new Promise<void>((resolve) => server.close(() => resolve()));
         }
     });
-});
 
+    it('can select tunnel by local port when multiple tunnels exist', async () => {
+        const { server, baseUrl } = await startServer((req, res) => {
+            if (req.url !== '/api/tunnels') {
+                res.statusCode = 404;
+                res.end();
+                return;
+            }
+            res.setHeader('Content-Type', 'application/json');
+            res.end(
+                JSON.stringify({
+                    tunnels: [
+                        {
+                            proto: 'https',
+                            public_url: 'https://wrong-port.ngrok.io',
+                            config: { addr: 'http://127.0.0.1:3000' },
+                        },
+                        {
+                            proto: 'https',
+                            public_url: 'https://right-port.ngrok.io',
+                            config: { addr: '127.0.0.1:4000' },
+                        },
+                    ],
+                })
+            );
+        });
+
+        try {
+            await expect(getNgrokPublicUrl(baseUrl, 1000, 4000)).resolves.toBe('https://right-port.ngrok.io');
+        } finally {
+            await new Promise<void>((resolve) => server.close(() => resolve()));
+        }
+    });
+});

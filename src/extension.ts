@@ -177,7 +177,7 @@ async function showConnectionInfo(): Promise<void> {
 
     let ngrokPublicUrl: string | undefined;
     try {
-        ngrokPublicUrl = await getNgrokPublicUrl();
+        ngrokPublicUrl = await getNgrokPublicUrl('http://127.0.0.1:4040', 750, port);
     } catch {
         ngrokPublicUrl = undefined;
     }
@@ -202,7 +202,7 @@ async function showConnectionInfo(): Promise<void> {
               }
             : {
                   label: 'ngrok not detected',
-                  description: 'Start ngrok and refresh',
+                  description: `Start ngrok for port ${port} and refresh`,
               },
         {
             label: '$(browser) Open ngrok dashboard (localhost:4040)',

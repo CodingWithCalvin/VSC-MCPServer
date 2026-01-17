@@ -5,6 +5,9 @@ import { URL } from 'url';
 type NgrokTunnel = {
     public_url?: string;
     proto?: string;
+    config?: {
+        addr?: string;
+    };
 };
 
 type NgrokTunnelsResponse = {
@@ -44,7 +47,8 @@ function requestText(url: string, timeoutMs: number): Promise<string> {
 
 export async function getNgrokPublicUrl(
     adminBaseUrl: string = 'http://127.0.0.1:4040',
-    timeoutMs: number = 750
+    timeoutMs: number = 750,
+    localPort?: number
 ): Promise<string | undefined> {
     const base = adminBaseUrl.endsWith('/') ? adminBaseUrl.slice(0, -1) : adminBaseUrl;
     const body = await requestText(`${base}/api/tunnels`, timeoutMs);
@@ -52,12 +56,25 @@ export async function getNgrokPublicUrl(
     const parsed = JSON.parse(body) as NgrokTunnelsResponse;
     const tunnels = parsed.tunnels || [];
 
-    const httpsTunnel = tunnels.find((t) => t.proto === 'https' && typeof t.public_url === 'string');
+    const normalizedTunnels =
+        typeof localPort === 'number'
+            ? tunnels.filter((t) => {
+                  const addr = t.config?.addr;
+                  if (!addr) {
+                      return false;
+                  }
+                  const normalized = addr.trim().replace(/^https?:\/\//i, '');
+                  return normalized.endsWith(`:${localPort}`);
+              })
+            : tunnels;
+
+    const httpsTunnel = normalizedTunnels.find(
+        (t) => t.proto === 'https' && typeof t.public_url === 'string'
+    );
     if (httpsTunnel?.public_url) {
         return httpsTunnel.public_url;
     }
 
-    const anyTunnel = tunnels.find((t) => typeof t.public_url === 'string');
+    const anyTunnel = normalizedTunnels.find((t) => typeof t.public_url === 'string');
     return anyTunnel?.public_url;
 }
-
