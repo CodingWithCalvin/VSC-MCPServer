@@ -92,6 +92,89 @@ Add to your MCP client configuration:
 }
 ```
 
+### ChatGPT Web (ngrok + Google OAuth)
+
+If you want to expose your MCP endpoint to ChatGPT Web, use ngrok as an OAuth-protected proxy in front of the local server.
+
+High-level flow:
+- VS Code extension runs locally: `http://127.0.0.1:4000/mcp`
+- ngrok enforces Google OAuth (Traffic Policy `oauth` action)
+- ngrok forwards requests upstream to your local MCP server
+
+#### Full example (Google OAuth + upstream bearer token)
+
+This example keeps the extension secure by requiring a bearer token, and configures ngrok to:
+1) enforce Google OAuth for end users, and
+2) inject the bearer token when forwarding upstream to the local MCP server.
+
+1) Configure the extension token (VS Code Settings)
+
+Set a strong token in VS Code settings:
+- `codingwithcalvin.mcp.authToken`: `your-long-random-token`
+
+2) Start the MCP server in VS Code
+
+Run `MCP Server: Start`. Confirm locally:
+
+```bash
+curl -sS -H "Authorization: Bearer your-long-random-token" http://127.0.0.1:4000/health
+```
+
+3) Create an ngrok Traffic Policy
+
+Create `policy.yml`:
+
+```yaml
+on_http_request:
+  - actions:
+      - type: oauth
+        config:
+          provider: google
+          allow_cors_preflight: true
+      - type: "add-headers"
+        config:
+          headers:
+            authorization: "Bearer your-long-random-token"
+```
+
+4) Start ngrok to your local MCP server
+
+```bash
+ngrok http 127.0.0.1:4000 --traffic-policy-file=policy.yml
+```
+
+5) Test through the tunnel
+
+Open `https://<your-ngrok-domain>/health` in a browser and complete Google sign-in. You should see:
+
+```json
+{"status":"ok","port":4000}
+```
+
+Your MCP endpoint via ngrok is:
+
+```
+https://<your-ngrok-domain>/mcp
+```
+
+In VS Code, you can also run `MCP Server: Connection Info` to see/copy the ngrok URL if the ngrok local dashboard is available at `http://127.0.0.1:4040`.
+
+#### Custom Google OAuth app (optional)
+
+If you want to use your own Google OAuth client:
+- Create OAuth client credentials in Google Cloud.
+- Set the Redirect/Callback URL to:
+
+```
+https://idp.ngrok.com/oauth2/callback
+```
+
+Then add `client_id` and `client_secret` under the `oauth` action config in `policy.yml` (see ngrok docs).
+
+ngrok docs:
+- `https://ngrok.com/docs/traffic-policy/actions/oauth`
+- `https://ngrok.com/docs/traffic-policy/actions/add-headers`
+
 ### URI Protocol
 
 Launch VS Code and control the MCP server via URI:

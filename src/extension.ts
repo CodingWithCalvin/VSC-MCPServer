@@ -3,6 +3,7 @@ import { MCPServer } from './server';
 import { getConfiguration, onConfigurationChanged, MCPServerConfig } from './config/settings';
 import { MCPUriHandler } from './handlers/uriHandler';
 import { getAllTools } from './tools';
+import { getNgrokPublicUrl } from './utils/ngrok';
 
 let mcpServer: MCPServer | undefined;
 let statusBarItem: vscode.StatusBarItem | undefined;
@@ -25,6 +26,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.commands.registerCommand('codingwithcalvin.mcp.stop', stopServer),
         vscode.commands.registerCommand('codingwithcalvin.mcp.restart', restartServer),
         vscode.commands.registerCommand('codingwithcalvin.mcp.toggle', toggleServer),
+        vscode.commands.registerCommand('codingwithcalvin.mcp.connectionInfo', showConnectionInfo),
         vscode.commands.registerCommand('codingwithcalvin.mcp.showTools', showAvailableTools)
     );
 
@@ -164,6 +166,74 @@ async function showAvailableTools(): Promise<void> {
         const url = `http://127.0.0.1:${port}/mcp`;
         await vscode.env.clipboard.writeText(url);
         vscode.window.showInformationMessage(`Copied: ${url}`);
+    }
+}
+
+async function showConnectionInfo(): Promise<void> {
+    const config = getConfiguration();
+    const port = mcpServer?.getPort() || config.port;
+    const isRunning = mcpServer?.getIsRunning() || false;
+    const localUrl = `http://127.0.0.1:${port}/mcp`;
+
+    let ngrokPublicUrl: string | undefined;
+    try {
+        ngrokPublicUrl = await getNgrokPublicUrl();
+    } catch {
+        ngrokPublicUrl = undefined;
+    }
+
+    const items: vscode.QuickPickItem[] = [
+        {
+            label: 'Local (direct)',
+            kind: vscode.QuickPickItemKind.Separator,
+        },
+        {
+            label: `$(globe) ${localUrl}`,
+            description: isRunning ? 'Copy to clipboard' : 'Server not running',
+        },
+        {
+            label: 'ngrok (optional)',
+            kind: vscode.QuickPickItemKind.Separator,
+        },
+        ngrokPublicUrl
+            ? {
+                  label: `$(link-external) ${ngrokPublicUrl}/mcp`,
+                  description: 'Copy to clipboard',
+              }
+            : {
+                  label: 'ngrok not detected',
+                  description: 'Start ngrok and refresh',
+              },
+        {
+            label: '$(browser) Open ngrok dashboard (localhost:4040)',
+            description: 'Shows your public URL',
+        },
+    ];
+
+    const selected = await vscode.window.showQuickPick(items, {
+        title: 'MCP Server Connection Info',
+        placeHolder: 'Select an item to copy/open',
+    });
+
+    if (!selected) {
+        return;
+    }
+
+    if (selected.label.includes('http://127.0.0.1:')) {
+        await vscode.env.clipboard.writeText(localUrl);
+        vscode.window.showInformationMessage(`Copied: ${localUrl}`);
+        return;
+    }
+
+    if (ngrokPublicUrl && selected.label.includes(ngrokPublicUrl)) {
+        const url = `${ngrokPublicUrl}/mcp`;
+        await vscode.env.clipboard.writeText(url);
+        vscode.window.showInformationMessage(`Copied: ${url}`);
+        return;
+    }
+
+    if (selected.label.includes('ngrok dashboard')) {
+        await vscode.env.openExternal(vscode.Uri.parse('http://127.0.0.1:4040'));
     }
 }
 

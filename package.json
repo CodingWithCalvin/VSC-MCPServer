@@ -61,6 +61,10 @@
         "title": "MCP Server: Restart"
       },
       {
+        "command": "codingwithcalvin.mcp.connectionInfo",
+        "title": "MCP Server: Connection Info"
+      },
+      {
         "command": "codingwithcalvin.mcp.showTools",
         "title": "MCP Server: Show Available Tools"
       }
