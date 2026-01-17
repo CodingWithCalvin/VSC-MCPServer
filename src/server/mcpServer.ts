@@ -72,11 +72,17 @@ export class MCPServer {
                 return;
             }
 
+            (req as unknown as { __mcpAuthOk?: boolean }).__mcpAuthOk = true;
             next();
         });
 
         // DNS rebinding protection - only allow localhost unless explicitly enabled
         this.app.use((req: Request, res: Response, next: NextFunction) => {
+            if ((req as unknown as { __mcpAuthOk?: boolean }).__mcpAuthOk) {
+                next();
+                return;
+            }
+
             if (this.config.allowRemoteConnections) {
                 next();
                 return;

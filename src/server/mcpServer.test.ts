@@ -170,6 +170,32 @@ describe('MCPServer HTTP middleware', () => {
         }
     });
 
+    it('accepts remote Host header with valid token even when allowRemoteConnections is disabled (200)', async () => {
+        const server = new MCPServer({
+            autoStart: false,
+            port: 0,
+            bindAddress: '127.0.0.1',
+            allowRemoteConnections: false,
+            authToken: 'secret-token',
+        });
+
+        const port = await server.start();
+        try {
+            const res = await httpRequest({
+                port,
+                method: 'GET',
+                path: '/health',
+                headers: {
+                    Host: 'example.ngrok-free.app',
+                    Authorization: 'Bearer secret-token',
+                },
+            });
+            expect(res.status).toBe(200);
+        } finally {
+            await server.stop();
+        }
+    });
+
     it('allows CORS preflight (OPTIONS) without auth and advertises Authorization header', async () => {
         const server = new MCPServer({
             autoStart: false,
