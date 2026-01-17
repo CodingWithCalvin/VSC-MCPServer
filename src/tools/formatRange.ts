@@ -27,7 +27,13 @@ export interface TextEdit {
 
 export async function formatRange(
     params: z.infer<typeof formatRangeSchema>
-): Promise<{ success: boolean; edits?: TextEdit[]; message?: string }> {
+): Promise<{
+    success: boolean;
+    applied?: boolean;
+    saved?: boolean;
+    edits?: TextEdit[];
+    message?: string;
+}> {
     // Handle both file:// URIs and plain paths
     const uri = params.uri.startsWith('file://')
         ? vscode.Uri.parse(params.uri)
@@ -67,6 +73,8 @@ export async function formatRange(
     if (params.dryRun) {
         return {
             success: true,
+            applied: false,
+            saved: false,
             edits: textEdits,
             message: `Dry-run: ${edits.length} formatting change(s) would be applied`,
         };
@@ -86,13 +94,18 @@ export async function formatRange(
     }
 
     const config = getConfiguration();
+    let saved = false;
     if (config.autoSaveAfterToolEdits) {
-        await document.save();
+        saved = await document.save();
     }
 
     return {
         success: true,
+        applied: true,
+        saved,
         edits: textEdits,
-        message: `Successfully formatted range with ${edits.length} change(s)${config.autoSaveAfterToolEdits ? ' (saved)' : ''}`,
+        message: `Successfully formatted range with ${edits.length} change(s)${
+            config.autoSaveAfterToolEdits ? (saved ? ' (saved)' : ' (save failed)') : ''
+        }`,
     };
 }

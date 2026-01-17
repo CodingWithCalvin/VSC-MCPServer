@@ -30,7 +30,13 @@ export interface FileEdit {
 
 export async function renameSymbol(
     params: z.infer<typeof renameSymbolSchema>
-): Promise<{ success: boolean; changes?: FileEdit[]; message?: string }> {
+): Promise<{
+    success: boolean;
+    applied?: boolean;
+    saved?: boolean;
+    changes?: FileEdit[];
+    message?: string;
+}> {
     // Handle both file:// URIs and plain paths
     const uri = params.uri.startsWith('file://')
         ? vscode.Uri.parse(params.uri)
@@ -88,6 +94,8 @@ export async function renameSymbol(
     if (params.dryRun) {
         return {
             success: true,
+            applied: false,
+            saved: false,
             changes: fileEdits,
             message: `Dry-run: Would rename symbol in ${fileEdits.length} file(s) with ${totalEdits} change(s)`,
         };
@@ -104,13 +112,19 @@ export async function renameSymbol(
     }
 
     const config = getConfiguration();
+    let saved = false;
     if (config.autoSaveAfterToolEdits) {
-        await saveUris(entries.map(([u]) => u));
+        const result = await saveUris(entries.map(([u]) => u));
+        saved = result.failedUris.length === 0;
     }
 
     return {
         success: true,
+        applied: true,
+        saved,
         changes: fileEdits,
-        message: `Successfully renamed symbol in ${fileEdits.length} file(s) with ${totalEdits} change(s)${config.autoSaveAfterToolEdits ? ' (saved)' : ''}`,
+        message: `Successfully renamed symbol in ${fileEdits.length} file(s) with ${totalEdits} change(s)${
+            config.autoSaveAfterToolEdits ? (saved ? ' (saved)' : ' (save failed)') : ''
+        }`,
     };
 }

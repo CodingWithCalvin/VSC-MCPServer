@@ -24,7 +24,13 @@ export interface TextEdit {
 
 export async function organizeImports(
     params: z.infer<typeof organizeImportsSchema>
-): Promise<{ success: boolean; edits?: TextEdit[]; message?: string }> {
+): Promise<{
+    success: boolean;
+    applied?: boolean;
+    saved?: boolean;
+    edits?: TextEdit[];
+    message?: string;
+}> {
     // Handle both file:// URIs and plain paths
     const uri = params.uri.startsWith('file://')
         ? vscode.Uri.parse(params.uri)
@@ -99,6 +105,8 @@ export async function organizeImports(
     if (params.dryRun) {
         return {
             success: true,
+            applied: false,
+            saved: false,
             edits: allEdits,
             message: `Dry-run: ${allEdits.length} import change(s) would be applied`,
         };
@@ -115,13 +123,19 @@ export async function organizeImports(
     }
 
     const config = getConfiguration();
+    let saved = false;
     if (config.autoSaveAfterToolEdits) {
-        await saveUris(entries.map(([u]) => u));
+        const result = await saveUris(entries.map(([u]) => u));
+        saved = result.failedUris.length === 0;
     }
 
     return {
         success: true,
+        applied: true,
+        saved,
         edits: allEdits,
-        message: `Successfully organized imports with ${allEdits.length} change(s)${config.autoSaveAfterToolEdits ? ' (saved)' : ''}`,
+        message: `Successfully organized imports with ${allEdits.length} change(s)${
+            config.autoSaveAfterToolEdits ? (saved ? ' (saved)' : ' (save failed)') : ''
+        }`,
     };
 }

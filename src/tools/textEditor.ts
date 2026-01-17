@@ -45,18 +45,20 @@ export async function textEditor(
     params: z.infer<typeof textEditorSchema>
 ): Promise<{
     success: boolean;
+    applied?: boolean;
     message?: string;
     uri?: string;
     content?: string;
     edits?: TextEdit[];
+    saved?: boolean;
 }> {
     try {
         if (params.action === 'undo') {
             if (params.dryRun) {
-                return { success: true, message: 'Dry-run: Would execute undo' };
+                return { success: true, applied: false, saved: false, message: 'Dry-run: Would execute undo' };
             }
             await vscode.commands.executeCommand('undo');
-            return { success: true, message: 'Undo executed' };
+            return { success: true, applied: true, saved: false, message: 'Undo executed' };
         }
 
         const uriParam = requireField(params.uri, 'uri');
@@ -67,6 +69,8 @@ export async function textEditor(
             if (params.dryRun) {
                 return {
                     success: true,
+                    applied: false,
+                    saved: false,
                     message: 'Dry-run: File would be created',
                     uri: uri.toString(),
                     content,
@@ -74,13 +78,19 @@ export async function textEditor(
             }
             const bytes = new TextEncoder().encode(content);
             await vscode.workspace.fs.writeFile(uri, bytes);
-            return { success: true, message: 'File created', uri: uri.toString() };
+            return { success: true, applied: true, saved: true, message: 'File created', uri: uri.toString() };
         }
 
         const document = await ensureDocumentOpen(uri);
 
         if (params.action === 'view') {
-            return { success: true, uri: uri.toString(), content: document.getText() };
+            return {
+                success: true,
+                applied: false,
+                saved: false,
+                uri: uri.toString(),
+                content: document.getText(),
+            };
         }
 
         const startLine = requireField(params.startLine, 'startLine');
@@ -101,6 +111,8 @@ export async function textEditor(
             const verb = params.action === 'insert' ? 'insert' : 'replace';
             return {
                 success: true,
+                applied: false,
+                saved: false,
                 edits,
                 message: `Dry-run: Would ${verb} text`,
             };
@@ -121,7 +133,9 @@ export async function textEditor(
         const verb = params.action === 'insert' ? 'Text inserted' : 'Text replaced';
         return {
             success: true,
+            applied: true,
             edits,
+            saved,
             message: config.autoSaveAfterToolEdits
                 ? saved
                     ? `${verb} (saved)`

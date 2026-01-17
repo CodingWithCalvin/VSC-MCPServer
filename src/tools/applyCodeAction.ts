@@ -38,7 +38,13 @@ export interface FileEdit {
 
 export async function applyCodeAction(
     params: z.infer<typeof applyCodeActionSchema>
-): Promise<{ success: boolean; changes?: FileEdit[]; message?: string }> {
+): Promise<{
+    success: boolean;
+    applied?: boolean;
+    saved?: boolean;
+    changes?: FileEdit[];
+    message?: string;
+}> {
     const config = getConfiguration();
 
     // Handle both file:// URIs and plain paths
@@ -100,6 +106,8 @@ export async function applyCodeAction(
         );
         return {
             success: true,
+            applied: true,
+            saved: false,
             message: `Executed command action "${params.actionTitle}"`,
         };
     }
@@ -135,6 +143,8 @@ export async function applyCodeAction(
         if (params.dryRun) {
             return {
                 success: true,
+                applied: false,
+                saved: false,
                 changes: fileEdits,
                 message: `Dry-run: Would apply code action in ${fileEdits.length} file(s) with ${totalEdits} change(s)`,
             };
@@ -149,8 +159,10 @@ export async function applyCodeAction(
         }
 
         // Auto-save files if enabled
+        let saved = false;
         if (config.autoSaveAfterToolEdits) {
-            await saveUris(entries.map(([u]) => u));
+            const result = await saveUris(entries.map(([u]) => u));
+            saved = result.failedUris.length === 0;
         }
 
         // Execute associated command if present
@@ -163,8 +175,12 @@ export async function applyCodeAction(
 
         return {
             success: true,
+            applied: true,
+            saved,
             changes: fileEdits,
-            message: `Successfully applied code action in ${fileEdits.length} file(s) with ${totalEdits} change(s)${config.autoSaveAfterToolEdits ? ' (saved)' : ''}`,
+            message: `Successfully applied code action in ${fileEdits.length} file(s) with ${totalEdits} change(s)${
+                config.autoSaveAfterToolEdits ? (saved ? ' (saved)' : ' (save failed)') : ''
+            }`,
         };
     }
 
@@ -184,6 +200,8 @@ export async function applyCodeAction(
 
         return {
             success: true,
+            applied: true,
+            saved: false,
             message: `Executed code action "${params.actionTitle}" (command-only)`,
         };
     }
