@@ -111,6 +111,8 @@ vscode://codingwithcalvin.mcp/open?folder=/path/to/dir  # Open folder and start
 | `codingwithcalvin.mcp.autoStart` | `true` | 🚀 Auto-start server on VS Code launch |
 | `codingwithcalvin.mcp.port` | `4000` | 🔌 MCP server port |
 | `codingwithcalvin.mcp.bindAddress` | `127.0.0.1` | 🔒 Bind address (localhost only) |
+| `codingwithcalvin.mcp.allowRemoteConnections` | `false` | ⚠️ Allow non-local Host/Origin headers (for tunnels like ngrok). Requires `authToken`. |
+| `codingwithcalvin.mcp.authToken` | `""` | 🔑 Optional bearer token. If set, clients must send `Authorization: Bearer <token>`. |
 
 ---
 
@@ -130,6 +132,7 @@ Access these from the Command Palette (Ctrl+Shift+P):
 - 🏠 **Localhost Only** - Binds only to `127.0.0.1`
 - 🛡️ **DNS Rebinding Protection** - Validates Host header
 - ✅ **Same-machine Trusted** - No authentication required for local access
+- ⚠️ **Tunnels/Remote** - If using ngrok, enable `codingwithcalvin.mcp.allowRemoteConnections` and set `codingwithcalvin.mcp.authToken`
 
 ---
 

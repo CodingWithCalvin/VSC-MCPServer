@@ -34,18 +34,62 @@ export class MCPServer {
         this.setupMCPHandlers();
     }
 
+    private shouldRequireAuth(): boolean {
+        return this.config.allowRemoteConnections || this.config.authToken.trim().length > 0;
+    }
+
+    private validateAuthConfiguration(): void {
+        if (this.config.allowRemoteConnections && this.config.authToken.trim().length === 0) {
+            throw new Error(
+                'Remote connections are enabled but no auth token is configured. Set codingwithcalvin.mcp.authToken.'
+            );
+        }
+    }
+
     private setupMiddleware(): void {
         // Parse JSON bodies
         this.app.use(express.json());
 
-        // DNS rebinding protection - only allow localhost
+        // Optional bearer token auth (recommended for tunnels)
         this.app.use((req: Request, res: Response, next: NextFunction) => {
+            if (req.method === 'OPTIONS') {
+                next();
+                return;
+            }
+
+            if (!this.shouldRequireAuth()) {
+                next();
+                return;
+            }
+
+            const expected = this.config.authToken.trim();
+            const authorization = req.header('authorization') || '';
+            const match = authorization.match(/^Bearer\s+(.+)$/i);
+            const provided = match?.[1]?.trim() || '';
+
+            if (!expected || provided !== expected) {
+                res.status(401).json({ error: 'Unauthorized' });
+                return;
+            }
+
+            next();
+        });
+
+        // DNS rebinding protection - only allow localhost unless explicitly enabled
+        this.app.use((req: Request, res: Response, next: NextFunction) => {
+            if (this.config.allowRemoteConnections) {
+                next();
+                return;
+            }
+
             const host = req.headers.host || '';
             if (
                 !host.startsWith('localhost:') &&
                 !host.startsWith('127.0.0.1:') &&
+                !host.startsWith('[::1]:') &&
                 host !== 'localhost' &&
-                host !== '127.0.0.1'
+                host !== '127.0.0.1' &&
+                host !== '[::1]'
             ) {
                 res.status(403).json({ error: 'Forbidden: Invalid host header' });
                 return;
@@ -53,16 +97,21 @@ export class MCPServer {
             next();
         });
 
-        // CORS for localhost only
+        // CORS for localhost only unless explicitly enabled
         this.app.use((req: Request, res: Response, next: NextFunction) => {
             const origin = req.headers.origin || '';
             if (
                 !origin ||
-                origin.match(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/)
+                this.config.allowRemoteConnections ||
+                origin.match(/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/)
             ) {
                 res.header('Access-Control-Allow-Origin', origin || '*');
                 res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-                res.header('Access-Control-Allow-Headers', 'Content-Type, mcp-session-id');
+                res.header(
+                    'Access-Control-Allow-Headers',
+                    'Content-Type, mcp-session-id, Authorization'
+                );
+                res.header('Vary', 'Origin');
             }
             if (req.method === 'OPTIONS') {
                 res.sendStatus(200);
@@ -192,6 +241,7 @@ export class MCPServer {
             return this.actualPort;
         }
 
+        this.validateAuthConfiguration();
         this.setupRoutes();
 
         return new Promise((resolve, reject) => {

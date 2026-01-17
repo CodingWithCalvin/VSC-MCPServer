@@ -4,6 +4,8 @@ export interface MCPServerConfig {
     autoStart: boolean;
     port: number;
     bindAddress: string;
+    allowRemoteConnections: boolean;
+    authToken: string;
 }
 
 export function getConfiguration(): MCPServerConfig {
@@ -13,6 +15,8 @@ export function getConfiguration(): MCPServerConfig {
         autoStart: config.get<boolean>('autoStart', true),
         port: config.get<number>('port', 4000),
         bindAddress: config.get<string>('bindAddress', '127.0.0.1'),
+        allowRemoteConnections: config.get<boolean>('allowRemoteConnections', false),
+        authToken: config.get<string>('authToken', ''),
     };
 }
 
