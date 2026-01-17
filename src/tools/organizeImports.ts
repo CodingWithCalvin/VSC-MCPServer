@@ -43,7 +43,13 @@ export async function organizeImports(
 
     const codeActions = await vscode.commands.executeCommand<
         (vscode.Command | vscode.CodeAction)[]
-    >('vscode.executeCodeActionProvider', uri, fullRange, vscode.CodeActionKind.SourceOrganizeImports);
+    >(
+        'vscode.executeCodeActionProvider',
+        uri,
+        fullRange,
+        vscode.CodeActionKind.SourceOrganizeImports.value,
+        1
+    );
 
     if (!codeActions || codeActions.length === 0) {
         return {
