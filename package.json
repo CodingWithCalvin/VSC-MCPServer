@@ -24,6 +24,7 @@
   "engines": {
     "vscode": "^1.85.0"
   },
+  "enabledApiProposals": ["findTextInFiles"],
   "categories": [
     "Other",
     "Programming Languages"
@@ -101,6 +102,11 @@
           "type": "boolean",
           "default": false,
           "description": "Enable unsafe tools like execute_command and execute_vscode_command. WARNING: these allow arbitrary command execution."
+        },
+        "codingwithcalvin.mcp.useFindTextInFiles": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use VS Code's built-in findTextInFiles API for search_workspace_text when available (fast). If disabled or unavailable, a slower fallback search is used."
         }
       }
     }

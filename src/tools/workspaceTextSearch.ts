@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { z } from 'zod';
-import { rangeToJSON, Range } from '../adapters/vscodeAdapter';
+import { Range, rangeToJSON } from '../adapters/vscodeAdapter';
+import { getConfiguration } from '../config/settings';
 
 export const workspaceTextSearchSchema = z.object({
     query: z.string().describe('Text or regex pattern to search for'),
@@ -33,18 +34,48 @@ export interface TextSearchResult {
     }[];
 }
 
+type WorkspaceTextSearchResponse = {
+    results: TextSearchResult[];
+    backend: 'findTextInFiles' | 'fallback';
+    warning?: string;
+};
+
 export async function searchWorkspaceText(
     params: z.infer<typeof workspaceTextSearchSchema>
-): Promise<{ results: TextSearchResult[] }> {
+): Promise<WorkspaceTextSearchResponse> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
-
     if (!workspaceFolders || workspaceFolders.length === 0) {
-        return { results: [] };
+        return { results: [], backend: 'fallback' };
     }
 
-    // Build the search query
+    const config = getConfiguration();
+
+    // Prefer findTextInFiles when enabled (fast), but gracefully fall back if unavailable.
+    if (config.useFindTextInFiles && typeof vscode.workspace.findTextInFiles === 'function') {
+        try {
+            return await searchWithFindTextInFiles(params);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            // If this API is blocked (proposed API) or otherwise unavailable, fall back.
+            return await searchWithFallback(params, `findTextInFiles unavailable: ${message}`);
+        }
+    }
+
+    return await searchWithFallback(
+        params,
+        config.useFindTextInFiles
+            ? 'findTextInFiles not available in this VS Code build/session; using fallback search.'
+            : 'useFindTextInFiles is disabled; using fallback search.'
+    );
+}
+
+async function searchWithFindTextInFiles(
+    params: z.infer<typeof workspaceTextSearchSchema>
+): Promise<WorkspaceTextSearchResponse> {
+    const maxResults = params.maxResults ?? 1000;
+
     const searchOptions: vscode.FindTextInFilesOptions = {
-        maxResults: params.maxResults || 1000,
+        maxResults,
         include: params.includePattern,
         exclude: params.excludePattern,
     };
@@ -56,7 +87,6 @@ export async function searchWorkspaceText(
         pattern = new RegExp(params.query, flags);
     }
 
-    // Perform the search
     const results: Map<string, TextSearchResult> = new Map();
 
     await vscode.workspace.findTextInFiles(
@@ -79,7 +109,6 @@ export async function searchWorkspaceText(
 
             const fileResult = results.get(uri)!;
 
-            // Add matches from this result
             if ('ranges' in result) {
                 // TextSearchMatch type
                 for (const range of result.ranges) {
@@ -93,5 +122,130 @@ export async function searchWorkspaceText(
         }
     );
 
-    return { results: Array.from(results.values()) };
+    return { results: Array.from(results.values()), backend: 'findTextInFiles' };
+}
+
+async function searchWithFallback(
+    params: z.infer<typeof workspaceTextSearchSchema>,
+    warning?: string
+): Promise<WorkspaceTextSearchResponse> {
+    const maxResults = params.maxResults ?? 1000;
+    const isCaseSensitive = params.isCaseSensitive ?? false;
+    const isRegex = params.isRegex ?? false;
+
+    // Find candidate files
+    const include = params.includePattern ?? '**/*';
+    const exclude = params.excludePattern;
+
+    const files = await vscode.workspace.findFiles(include, exclude, Math.max(1000, maxResults));
+
+    const results: Map<string, TextSearchResult> = new Map();
+    let totalMatches = 0;
+
+    const textDecoder = new TextDecoder('utf-8');
+
+    const regex = isRegex
+        ? new RegExp(params.query, `${isCaseSensitive ? '' : 'i'}g`)
+        : undefined;
+    const needle = isRegex
+        ? undefined
+        : isCaseSensitive
+            ? params.query
+            : params.query.toLowerCase();
+
+    for (const uri of files) {
+        if (totalMatches >= maxResults) break;
+
+        let text: string;
+        try {
+            const bytes = await vscode.workspace.fs.readFile(uri);
+            text = textDecoder.decode(bytes);
+        } catch {
+            // Ignore unreadable/binary files
+            continue;
+        }
+
+        const lines = text.split(/\r?\n/);
+
+        for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
+            if (totalMatches >= maxResults) break;
+
+            const line = lines[lineNumber];
+
+            if (regex) {
+                regex.lastIndex = 0;
+                let match: RegExpExecArray | null;
+                while ((match = regex.exec(line)) !== null) {
+                    const start = match.index;
+                    const length = match[0]?.length ?? 0;
+                    const end = start + length;
+
+                    pushMatch(results, uri, lineNumber, start, end, line);
+                    totalMatches++;
+
+                    if (totalMatches >= maxResults) break;
+
+                    // Avoid infinite loops on zero-length matches
+                    if (length === 0) {
+                        regex.lastIndex++;
+                    }
+                }
+            } else if (needle) {
+                const haystack = isCaseSensitive ? line : line.toLowerCase();
+                let idx = 0;
+                while (true) {
+                    const found = haystack.indexOf(needle, idx);
+                    if (found === -1) break;
+
+                    const start = found;
+                    const end = found + needle.length;
+
+                    pushMatch(results, uri, lineNumber, start, end, line);
+                    totalMatches++;
+
+                    if (totalMatches >= maxResults) break;
+
+                    idx = Math.max(end, found + 1);
+                }
+            }
+        }
+    }
+
+    return {
+        results: Array.from(results.values()),
+        backend: 'fallback',
+        warning,
+    };
+}
+
+function pushMatch(
+    results: Map<string, TextSearchResult>,
+    uri: vscode.Uri,
+    lineNumber: number,
+    startCharacter: number,
+    endCharacter: number,
+    previewLine: string
+): void {
+    const uriString = uri.toString();
+
+    if (!results.has(uriString)) {
+        results.set(uriString, {
+            uri: uriString,
+            relativePath: vscode.workspace.asRelativePath(uri, false),
+            matches: [],
+        });
+    }
+
+    const fileResult = results.get(uriString)!;
+
+    fileResult.matches.push({
+        range: {
+            startLine: lineNumber,
+            startCharacter,
+            endLine: lineNumber,
+            endCharacter,
+        },
+        preview: previewLine,
+        lineNumber,
+    });
 }

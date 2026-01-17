@@ -7,6 +7,12 @@ export interface MCPServerConfig {
     allowRemoteConnections: boolean;
     authToken: string;
     enableUnsafeTools: boolean;
+
+    /**
+     * Prefer VS Code's built-in workspace text search (findTextInFiles) when available.
+     * If disabled (or unavailable), search_workspace_text falls back to a slower implementation.
+     */
+    useFindTextInFiles: boolean;
 }
 
 export function getConfiguration(): MCPServerConfig {
@@ -19,6 +25,7 @@ export function getConfiguration(): MCPServerConfig {
         allowRemoteConnections: config.get<boolean>('allowRemoteConnections', false),
         authToken: config.get<string>('authToken', ''),
         enableUnsafeTools: config.get<boolean>('enableUnsafeTools', false),
+        useFindTextInFiles: config.get<boolean>('useFindTextInFiles', true),
     };
 }
 
