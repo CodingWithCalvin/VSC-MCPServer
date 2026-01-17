@@ -34,6 +34,14 @@ describe('Debug session tools', () => {
         expect(result.sessions[0].id).toBe('1');
     });
 
+    it('handles missing vscode.debug.sessions by returning empty list', async () => {
+        (mockVscode.debug as any).sessions = undefined;
+
+        const result = await listDebugSessions();
+
+        expect(result.sessions).toEqual([]);
+    });
+
     it('starts a debug session', async () => {
         mockVscode.debug.startDebugging.mockResolvedValue(true);
 
@@ -49,7 +57,7 @@ describe('Debug session tools', () => {
 
     it('stops all debug sessions', async () => {
         mockVscode.debug.sessions = [{ id: '1', name: 'a', type: 'node' }];
-        mockVscode.debug.stopDebugging.mockResolvedValue(true);
+        mockVscode.debug.stopDebugging.mockResolvedValue(undefined);
 
         const result = await stopDebugSession(stopDebugSessionSchema.parse({ stopAll: true }));
 
@@ -68,7 +76,7 @@ describe('Debug session tools', () => {
                 workspaceFolder: mockVscode.workspace.workspaceFolders?.[0],
             },
         ];
-        mockVscode.debug.stopDebugging.mockResolvedValue(true);
+        mockVscode.debug.stopDebugging.mockResolvedValue(undefined);
         mockVscode.debug.startDebugging.mockResolvedValue(true);
 
         const result = await restartDebugSession(restartDebugSessionSchema.parse({ sessionId: '1' }));
@@ -78,4 +86,3 @@ describe('Debug session tools', () => {
         expect(mockVscode.debug.startDebugging).toHaveBeenCalled();
     });
 });
-

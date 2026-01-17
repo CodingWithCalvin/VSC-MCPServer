@@ -393,7 +393,7 @@ export const mockVscode = {
     debug: {
         sessions: [] as any[],
         startDebugging: vi.fn().mockResolvedValue(true),
-        stopDebugging: vi.fn().mockResolvedValue(true),
+        stopDebugging: vi.fn().mockResolvedValue(undefined),
     },
 };
 

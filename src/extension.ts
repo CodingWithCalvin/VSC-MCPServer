@@ -4,6 +4,7 @@ import { getConfiguration, onConfigurationChanged, MCPServerConfig } from './con
 import { MCPUriHandler } from './handlers/uriHandler';
 import { getAllTools } from './tools';
 import { getNgrokPublicUrl } from './utils/ngrok';
+import { initDebugSessionRegistry } from './utils/debugSessionRegistry';
 
 let mcpServer: MCPServer | undefined;
 let statusBarItem: vscode.StatusBarItem | undefined;
@@ -14,6 +15,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     log('MCP Server extension activating...');
 
     const config = getConfiguration();
+
+    initDebugSessionRegistry(context);
 
     // Create status bar item
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);

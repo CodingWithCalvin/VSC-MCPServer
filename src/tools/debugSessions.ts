@@ -1,13 +1,28 @@
 import * as vscode from 'vscode';
 import { z } from 'zod';
+import { getKnownDebugSessions, getKnownDebugSessionById } from '../utils/debugSessionRegistry';
 
 export const listDebugSessionsSchema = z.object({});
+
+function getSessions(): readonly vscode.DebugSession[] {
+    // Some VS Code builds/environments may not expose vscode.debug.sessions.
+    const apiSessions = (vscode.debug as unknown as { sessions?: readonly vscode.DebugSession[] })
+        .sessions;
+    const knownSessions = getKnownDebugSessions();
+    if (!apiSessions) return knownSessions;
+
+    const merged = new Map<string, vscode.DebugSession>();
+    for (const session of apiSessions) merged.set(session.id, session);
+    for (const session of knownSessions) merged.set(session.id, session);
+    return Array.from(merged.values());
+}
 
 export async function listDebugSessions(): Promise<{
     sessions: Array<{ id: string; name: string; type: string }>;
 }> {
+    const sessions = getSessions();
     return {
-        sessions: vscode.debug.sessions.map((s) => ({
+        sessions: sessions.map((s) => ({
             id: s.id,
             name: s.name,
             type: s.type,
@@ -54,12 +69,17 @@ export const stopDebugSessionSchema = z.object({
 export async function stopDebugSession(
     params: z.infer<typeof stopDebugSessionSchema>
 ): Promise<{ success: boolean; stopped: number; message?: string }> {
-    const sessions = vscode.debug.sessions;
+    const sessions = getSessions();
 
     const toStop = params.stopAll
         ? sessions
         : params.sessionId
-          ? sessions.filter((s) => s.id === params.sessionId)
+          ? (() => {
+                const inSessions = sessions.filter((s) => s.id === params.sessionId);
+                if (inSessions.length > 0) return inSessions;
+                const known = getKnownDebugSessionById(params.sessionId);
+                return known ? [known] : [];
+            })()
           : [];
 
     if (toStop.length === 0) {
@@ -68,8 +88,12 @@ export async function stopDebugSession(
 
     let stopped = 0;
     for (const session of toStop) {
-        const ok = await vscode.debug.stopDebugging(session);
-        if (ok) stopped++;
+        try {
+            await vscode.debug.stopDebugging(session);
+            stopped++;
+        } catch {
+            // ignore and continue
+        }
     }
 
     return { success: stopped > 0, stopped, message: `Stopped ${stopped} session(s)` };
@@ -82,13 +106,14 @@ export const restartDebugSessionSchema = z.object({
 export async function restartDebugSession(
     params: z.infer<typeof restartDebugSessionSchema>
 ): Promise<{ success: boolean; message?: string }> {
-    const session = vscode.debug.sessions.find((s) => s.id === params.sessionId);
+    const session = getSessions().find((s) => s.id === params.sessionId);
     if (!session) {
         return { success: false, message: 'Debug session not found' };
     }
 
-    const stopped = await vscode.debug.stopDebugging(session);
-    if (!stopped) {
+    try {
+        await vscode.debug.stopDebugging(session);
+    } catch {
         return { success: false, message: 'Failed to stop debug session' };
     }
 
