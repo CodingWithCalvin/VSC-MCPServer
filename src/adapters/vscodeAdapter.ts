@@ -116,6 +116,7 @@ export async function ensureDocumentOpen(uri: vscode.Uri): Promise<vscode.TextDo
         // Open the document (doesn't show it in editor)
         return await vscode.workspace.openTextDocument(uri);
     } catch (error) {
-        throw new Error(`Failed to open document: ${uri.toString()}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        throw new Error(`Failed to open document: ${uri.toString()} (${errorMessage})`);
     }
 }

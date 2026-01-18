@@ -82,13 +82,17 @@ function zodToJsonSchema(schema: z.ZodObject<z.ZodRawShape>): ToolDefinition['in
         const zodType = value as z.ZodTypeAny;
         const description = zodType.description;
 
-        // Handle optional types
+        // Handle optional / defaulted types
         let innerType = zodType;
         let isOptional = false;
 
-        if (zodType instanceof z.ZodOptional || zodType instanceof z.ZodDefault) {
+        while (innerType instanceof z.ZodOptional || innerType instanceof z.ZodDefault) {
             isOptional = true;
-            innerType = zodType instanceof z.ZodOptional ? zodType.unwrap() : zodType._def.innerType;
+            if (innerType instanceof z.ZodOptional) {
+                innerType = innerType.unwrap();
+            } else {
+                innerType = innerType._def.innerType as z.ZodTypeAny;
+            }
         }
 
         // Convert zod type to JSON schema type
@@ -374,7 +378,7 @@ registerTool(
 
 registerTool(
     'list_directory',
-    'List directory contents as a tree',
+    'List directory contents as a (bounded) tree; supports depth/entry caps and excludes',
     listDirectorySchema,
     listDirectory as (params: Record<string, unknown>) => Promise<unknown>
 );

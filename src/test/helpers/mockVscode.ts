@@ -394,6 +394,9 @@ export const mockVscode = {
 
     debug: {
         sessions: [] as any[],
+        activeDebugSession: undefined as any,
+        onDidStartDebugSession: vi.fn().mockImplementation((_cb: any) => ({ dispose: vi.fn() })),
+        onDidTerminateDebugSession: vi.fn().mockImplementation((_cb: any) => ({ dispose: vi.fn() })),
         startDebugging: vi.fn().mockResolvedValue(true),
         stopDebugging: vi.fn().mockResolvedValue(undefined),
     },

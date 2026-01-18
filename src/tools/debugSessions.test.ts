@@ -20,6 +20,7 @@ describe('Debug session tools', () => {
     beforeEach(() => {
         resetMocks();
         mockVscode.debug.sessions = [];
+        mockVscode.debug.activeDebugSession = undefined;
     });
 
     it('lists sessions', async () => {
@@ -43,6 +44,11 @@ describe('Debug session tools', () => {
     });
 
     it('starts a debug session', async () => {
+        let startCb: ((s: any) => void) | undefined;
+        mockVscode.debug.onDidStartDebugSession.mockImplementation((cb: any) => {
+            startCb = cb;
+            return { dispose: vi.fn() } as any;
+        });
         mockVscode.debug.startDebugging.mockResolvedValue(true);
 
         const result = await startDebugSession(
@@ -51,8 +57,12 @@ describe('Debug session tools', () => {
             })
         );
 
+        // If the start event isn't observed, we still consider the start requested successfully.
         expect(result.success).toBe(true);
         expect(mockVscode.debug.startDebugging).toHaveBeenCalled();
+
+        // Simulate the event arriving shortly after (and ensure it doesn't break anything)
+        startCb?.({ id: '1', name: 'test', type: 'node' });
     });
 
     it('stops all debug sessions', async () => {
