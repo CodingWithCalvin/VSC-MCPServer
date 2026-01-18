@@ -2,9 +2,10 @@ import * as vscode from 'vscode';
 import { MCPServer } from './server';
 import { getConfiguration, onConfigurationChanged, MCPServerConfig } from './config/settings';
 import { MCPUriHandler } from './handlers/uriHandler';
-import { getAllTools } from './tools';
+import { getAllTools, getBuiltInToolsCatalog } from './tools';
 import { getNgrokPublicUrl } from './utils/ngrok';
 import { initDebugSessionRegistry } from './utils/debugSessionRegistry';
+import { getLanguageModelToolsSnapshot, groupToolNamesByPrefix } from './utils/lmTools';
 
 let mcpServer: MCPServer | undefined;
 let statusBarItem: vscode.StatusBarItem | undefined;
@@ -30,7 +31,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.commands.registerCommand('codingwithcalvin.mcp.restart', restartServer),
         vscode.commands.registerCommand('codingwithcalvin.mcp.toggle', toggleServer),
         vscode.commands.registerCommand('codingwithcalvin.mcp.connectionInfo', showConnectionInfo),
-        vscode.commands.registerCommand('codingwithcalvin.mcp.showTools', showAvailableTools)
+        vscode.commands.registerCommand('codingwithcalvin.mcp.showTools', showAvailableTools),
+        vscode.commands.registerCommand('codingwithcalvin.mcp.inspectLmTools', inspectLanguageModelTools),
+        vscode.commands.registerCommand('codingwithcalvin.mcp.configureVscodeTools', configureVSCodeTools),
+        vscode.commands.registerCommand('codingwithcalvin.mcp.configureDefaultTools', configureBuiltInTools)
     );
 
     // Register URI handler
@@ -140,8 +144,8 @@ async function toggleServer(): Promise<void> {
 }
 
 async function showAvailableTools(): Promise<void> {
-    const tools = getAllTools();
     const config = getConfiguration();
+    const tools = getAllTools(config);
     const port = mcpServer?.getPort() || config.port;
     const isRunning = mcpServer?.getIsRunning() || false;
 
@@ -261,4 +265,166 @@ function updateStatusBar(running: boolean, port?: number): void {
 function log(message: string): void {
     const timestamp = new Date().toISOString();
     outputChannel?.appendLine(`[${timestamp}] ${message}`);
+}
+
+async function inspectLanguageModelTools(): Promise<void> {
+    const snapshot = getLanguageModelToolsSnapshot();
+
+    if (!vscode.lm) {
+        vscode.window.showWarningMessage('vscode.lm is not available in this VS Code build.');
+        return;
+    }
+
+    if (snapshot.length === 0) {
+        vscode.window.showInformationMessage('No tools found in vscode.lm.tools.');
+        return;
+    }
+
+    const groups = groupToolNamesByPrefix(snapshot.map((t) => t.name));
+
+    const items: vscode.QuickPickItem[] = [
+        {
+            label: 'Copy all tools as JSON',
+            description: `${snapshot.length} tools`,
+        },
+        {
+            label: 'Copy grouped tool names (by prefix)',
+            description: `${groups.size} groups`,
+        },
+        { label: 'Tools', kind: vscode.QuickPickItemKind.Separator },
+        ...snapshot.map((tool) => ({
+            label: tool.name,
+            description: tool.tags.length > 0 ? tool.tags.join(', ') : undefined,
+            detail: tool.description || (tool.hasInputSchema ? `inputSchema: ${tool.inputSchemaType ?? 'present'}` : 'no inputSchema'),
+        })),
+    ];
+
+    const selected = await vscode.window.showQuickPick(items, {
+        title: 'vscode.lm.tools',
+        matchOnDescription: true,
+        matchOnDetail: true,
+        placeHolder: 'Select a tool to copy its name, or pick an export option',
+    });
+
+    if (!selected) {
+        return;
+    }
+
+    if (selected.label === 'Copy all tools as JSON') {
+        await vscode.env.clipboard.writeText(JSON.stringify(snapshot, null, 2));
+        vscode.window.showInformationMessage(`Copied ${snapshot.length} tools as JSON`);
+        log(`Copied ${snapshot.length} vscode.lm.tools as JSON`);
+        return;
+    }
+
+    if (selected.label === 'Copy grouped tool names (by prefix)') {
+        const grouped = Object.fromEntries([...groups.entries()]);
+        await vscode.env.clipboard.writeText(JSON.stringify(grouped, null, 2));
+        vscode.window.showInformationMessage(`Copied ${groups.size} groups as JSON`);
+        log(`Copied vscode.lm.tools grouped by prefix (${groups.size} groups)`);
+        return;
+    }
+
+    await vscode.env.clipboard.writeText(selected.label);
+    vscode.window.showInformationMessage(`Copied: ${selected.label}`);
+}
+
+async function configureVSCodeTools(): Promise<void> {
+    const config = getConfiguration();
+
+    if (!vscode.lm?.tools) {
+        vscode.window.showWarningMessage('vscode.lm.tools is not available in this VS Code build.');
+        return;
+    }
+
+    if (!config.enableVSCodeTools) {
+        const enable = await vscode.window.showInformationMessage(
+            'VS Code tools are currently disabled. Enable them first (codingwithcalvin.mcp.vscodeTools.enabled).',
+            'Open Settings'
+        );
+        if (enable === 'Open Settings') {
+            await vscode.commands.executeCommand('workbench.action.openSettings', 'codingwithcalvin.mcp.vscodeTools');
+        }
+        return;
+    }
+
+    const tools = Array.from(vscode.lm.tools).sort((a, b) => a.name.localeCompare(b.name));
+    const current = new Set(config.vscodeToolsAllowedNames);
+
+    const items: (vscode.QuickPickItem & { toolName: string })[] = tools.map((tool) => ({
+        label: tool.name,
+        description: tool.tags?.length ? tool.tags.join(', ') : undefined,
+        detail: tool.description || undefined,
+        picked: current.has(tool.name),
+        toolName: tool.name,
+    }));
+
+    const selected = await vscode.window.showQuickPick(items, {
+        title: 'Expose VS Code Tools',
+        placeHolder: 'Select which vscode.lm.tools to expose via MCP',
+        canPickMany: true,
+        matchOnDescription: true,
+        matchOnDetail: true,
+    });
+
+    if (!selected) {
+        return;
+    }
+
+    const allowed = selected.map((s) => s.toolName);
+    await vscode.workspace
+        .getConfiguration('codingwithcalvin.mcp')
+        .update('vscodeTools.allowed', allowed, vscode.ConfigurationTarget.Workspace);
+
+    vscode.window.showInformationMessage(`Exposing ${allowed.length} VS Code tool(s) via MCP`);
+    log(`Updated vscodeTools.allowed (${allowed.length} tools)`);
+}
+
+async function configureBuiltInTools(): Promise<void> {
+    const config = getConfiguration();
+
+    if (config.enableDefaultTools === false) {
+        const enable = await vscode.window.showInformationMessage(
+            'Built-in tools are currently disabled (codingwithcalvin.mcp.defaultTools.enabled).',
+            'Open Settings'
+        );
+        if (enable === 'Open Settings') {
+            await vscode.commands.executeCommand(
+                'workbench.action.openSettings',
+                'codingwithcalvin.mcp.defaultTools'
+            );
+        }
+        return;
+    }
+
+    const catalog = getBuiltInToolsCatalog();
+    const current = config.defaultToolsAllowedConfigured
+        ? new Set(config.defaultToolsAllowedNames)
+        : new Set(catalog.map((t) => t.name));
+
+    const items: (vscode.QuickPickItem & { toolName: string })[] = catalog.map((tool) => ({
+        label: tool.name,
+        detail: tool.description,
+        picked: current.has(tool.name),
+        toolName: tool.name,
+    }));
+
+    const selected = await vscode.window.showQuickPick(items, {
+        title: 'Expose Built-in Tools',
+        placeHolder: 'Select which built-in tools to expose via MCP (empty = expose none)',
+        canPickMany: true,
+        matchOnDetail: true,
+    });
+
+    if (!selected) {
+        return;
+    }
+
+    const allowed = selected.map((s) => s.toolName);
+    await vscode.workspace
+        .getConfiguration('codingwithcalvin.mcp')
+        .update('defaultTools.allowed', allowed, vscode.ConfigurationTarget.Workspace);
+
+    vscode.window.showInformationMessage(`Exposing ${allowed.length} built-in tool(s) via MCP`);
+    log(`Updated defaultTools.allowed (${allowed.length} tools)`);
 }

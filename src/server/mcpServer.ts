@@ -131,7 +131,7 @@ export class MCPServer {
         // List available tools
         this.server.setRequestHandler(ListToolsRequestSchema, async () => {
             return {
-                tools: getAllTools(),
+                tools: getAllTools(this.config),
             };
         });
 
@@ -139,7 +139,7 @@ export class MCPServer {
         this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
             const { name, arguments: args } = request.params;
             try {
-                const result = await callTool(name, args || {});
+                const result = await callTool(name, args || {}, this.config);
                 return {
                     content: [
                         {
@@ -193,7 +193,7 @@ export class MCPServer {
                 }
 
                 if (method === 'tools/list') {
-                    const tools = getAllTools();
+                    const tools = getAllTools(this.config);
                     res.json({
                         jsonrpc: '2.0',
                         id,
@@ -204,7 +204,7 @@ export class MCPServer {
 
                 if (method === 'tools/call') {
                     const { name, arguments: args } = params;
-                    const result = await callTool(name, args || {});
+                    const result = await callTool(name, args || {}, this.config);
                     res.json({
                         jsonrpc: '2.0',
                         id,
