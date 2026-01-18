@@ -68,6 +68,18 @@
       {
         "command": "codingwithcalvin.mcp.showTools",
         "title": "MCP Server: Show Available Tools"
+      },
+      {
+        "command": "codingwithcalvin.mcp.inspectLmTools",
+        "title": "MCP Server: Inspect vscode.lm.tools"
+      },
+      {
+        "command": "codingwithcalvin.mcp.configureVscodeTools",
+        "title": "MCP Server: Configure VS Code Tools…"
+      },
+      {
+        "command": "codingwithcalvin.mcp.configureDefaultTools",
+        "title": "MCP Server: Configure Built-in Tools…"
       }
     ],
     "configuration": {
@@ -112,6 +124,16 @@
           "type": "boolean",
           "default": true,
           "description": "Automatically save files to disk after edit-applying tools run (format_document, format_range, organize_imports, rename_symbol, apply_code_action)."
+        },
+        "codingwithcalvin.mcp.defaultTools.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Expose this extension's built-in tools through the MCP server. Configure which tools are exposed via [MCP Server: Configure Built-in Tools…](command:codingwithcalvin.mcp.configureDefaultTools)."
+        },
+        "codingwithcalvin.mcp.vscodeTools.enabled": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Expose VS Code tools (vscode.lm.tools, including tools coming from VS Code MCP servers / extensions) through this MCP server. Select tools via [MCP Server: Configure VS Code Tools…](command:codingwithcalvin.mcp.configureVscodeTools)."
         }
       }
     }

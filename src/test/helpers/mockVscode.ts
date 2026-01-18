@@ -349,6 +349,13 @@ export const mockVscode = {
     workspace: {
         getConfiguration: vi.fn().mockImplementation(() => ({
             get: vi.fn((_key: string, defaultValue: any) => defaultValue),
+            inspect: vi.fn((_key: string) => ({
+                key: _key,
+                defaultValue: undefined,
+                globalValue: undefined,
+                workspaceValue: undefined,
+                workspaceFolderValue: undefined,
+            })),
             update: vi.fn(),
         })),
         openTextDocument: vi.fn().mockImplementation((uri: MockUri) => {
@@ -411,6 +418,13 @@ export function resetMocks() {
     // Ensure key mocks keep a safe default implementation after clearAllMocks.
     mockVscode.workspace.getConfiguration.mockImplementation(() => ({
         get: vi.fn((_key: string, defaultValue: any) => defaultValue),
+        inspect: vi.fn((_key: string) => ({
+            key: _key,
+            defaultValue: undefined,
+            globalValue: undefined,
+            workspaceValue: undefined,
+            workspaceFolderValue: undefined,
+        })),
         update: vi.fn(),
     }));
 
