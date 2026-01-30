@@ -3,101 +3,13 @@ name: Publish to VS Code Marketplace
 on:
   workflow_dispatch:
 
-permissions:
-  contents: write
-  actions: read
-
 jobs:
   publish:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: npm run test
-
-      - name: Build extension
-        run: npm run build
-
-      - name: Set version
-        id: version
-        run: |
-          VERSION=$(date +'%Y.%m%d').${{ github.run_number }}
-          npm version $VERSION --no-git-tag-version --allow-same-version
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Package VSIX
-        run: npx @vscode/vsce package -o CodingWithCalvin.VSC-MCPServer.vsix
-
-      - name: Publish to VS Code Marketplace
-        run: npx @vscode/vsce publish -p ${{ secrets.VS_PAT }}
-
-      - name: Upload VSIX artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: vsix
-          path: CodingWithCalvin.VSC-MCPServer.vsix
-
-  changelog:
-    needs: publish
-    uses: CodingWithCalvin/.github/.github/workflows/generate-changelog.yml@main
-    secrets: inherit
-
-  release:
-    needs: [publish, changelog]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download VSIX artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: vsix
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ needs.publish.outputs.version }}
-          name: v${{ needs.publish.outputs.version }}
-          body: ${{ needs.changelog.outputs.changelog }}
-          files: CodingWithCalvin.VSC-MCPServer.vsix
-
-  bluesky:
-    needs: [publish, release]
-    uses: CodingWithCalvin/.github/.github/workflows/bluesky-post.yml@main
+    uses: CodingWithCalvin/.github/.github/workflows/vsc-vsix-publish.yml@main
     with:
-      post_text: |
-        🚀 VSC as MCP v${{ needs.publish.outputs.version }} has been released!
-
-        [GitHub Release](https://github.com/CodingWithCalvin/VSC-MCPServer/releases/tag/v${{ needs.publish.outputs.version }})
-        [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.VSC-MCPServer)
-      embed_title: "VSC as MCP v${{ needs.publish.outputs.version }}"
-      embed_description: "Supercharge your AI coding assistants with VS Code's powerful language intelligence!"
+      extension-name: VSC-MCPServer
+      display-name: "VSC as MCP"
+      marketplace-id: CodingWithCalvin.VSC-MCPServer
+      description: "Supercharge your AI coding assistants with VS Code's powerful language intelligence!"
+      hashtags: "#mcp #ai #claude"
     secrets: inherit
-
-  x:
-    needs: [publish, release]
-    uses: CodingWithCalvin/.github/.github/workflows/x-post.yml@main
-    with:
-      post_text: |
-        🚀 VSC as MCP v${{ needs.publish.outputs.version }} has been released!
-
-        GitHub Release: https://github.com/CodingWithCalvin/VSC-MCPServer/releases/tag/v${{ needs.publish.outputs.version }}
-        VS Code Marketplace: https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.VSC-MCPServer
-    secrets: inherit
-
