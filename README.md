@@ -36,15 +36,15 @@
 
 A Visual Studio Code extension that exposes an MCP (Model Context Protocol) server, giving AI tools like Claude, Cursor, and others direct access to VS Code's semantic code understanding capabilities - go-to-definition, find references, completions, diagnostics, and so much more!
 
-## Features
+## ✨ Features
 
-- **Full Language Intelligence** - Access VS Code's language server features via MCP tools
-- **Workspace Aware** - Works on individual files or full project contexts
-- **URI Protocol Handler** - Launch VS Code via `vscode://codingwithcalvin.mcp/...`
-- **Auto-start** - MCP server starts automatically when VS Code launches
-- **Secure by Default** - Binds only to localhost, no external access
+- 🧠 **Full Language Intelligence** - Access VS Code's language server features via MCP tools
+- 📁 **Workspace Aware** - Works on individual files or full project contexts
+- 🔗 **URI Protocol Handler** - Launch VS Code via `vscode://codingwithcalvin.mcp/...`
+- ⚡ **Auto-start** - MCP server starts automatically when VS Code launches
+- 🔒 **Secure by Default** - Binds only to localhost, no external access
 
-## Available Tools
+## 🛠️ Available Tools
 
 | Tool | Description |
 |------|-------------|
@@ -68,7 +68,7 @@ A Visual Studio Code extension that exposes an MCP (Model Context Protocol) serv
 | `vscode_workspace_file_search` | Search for files by pattern |
 | `vscode_workspace_text_search` | Search for text across files |
 
-## Installation
+## 📦 Installation
 
 ### VS Code Marketplace
 
@@ -85,11 +85,11 @@ Download the latest `.vsix` from the [Releases](https://github.com/CodingWithCal
 code --install-extension CodingWithCalvin.VSC-MCPServer.vsix
 ```
 
-## Usage
+## 🚀 Usage
 
 The MCP server starts automatically when VS Code launches! Just configure your AI tool to connect:
 
-### MCP Configuration
+### 🤖 MCP Configuration
 
 Add to your MCP client configuration:
 
@@ -104,7 +104,7 @@ Add to your MCP client configuration:
 }
 ```
 
-### URI Protocol
+### 🔗 URI Protocol
 
 Launch VS Code and control the MCP server via URI:
 
@@ -114,7 +114,7 @@ vscode://codingwithcalvin.mcp/start?port=4000           # Start on specific port
 vscode://codingwithcalvin.mcp/open?folder=/path/to/dir  # Open folder and start
 ```
 
-## Configuration
+## ⚙️ Configuration
 
 | Setting | Default | Description |
 |---------|---------|-------------|
@@ -122,44 +122,44 @@ vscode://codingwithcalvin.mcp/open?folder=/path/to/dir  # Open folder and start
 | `codingwithcalvin.mcp.port` | `4000` | MCP server port |
 | `codingwithcalvin.mcp.bindAddress` | `127.0.0.1` | Bind address (localhost only) |
 
-## Commands
+## 💻 Commands
 
 Access these from the Command Palette (Ctrl+Shift+P):
 
-- **MCP Server: Start** - Start the MCP server
-- **MCP Server: Stop** - Stop the MCP server
-- **MCP Server: Restart** - Restart the MCP server
-- **MCP Server: Show Available Tools** - View all available MCP tools
+- ▶️ **MCP Server: Start** - Start the MCP server
+- ⏹️ **MCP Server: Stop** - Stop the MCP server
+- 🔄 **MCP Server: Restart** - Restart the MCP server
+- 📋 **MCP Server: Show Available Tools** - View all available MCP tools
 
-## Security
+## 🔒 Security
 
-- **Localhost Only** - Binds only to `127.0.0.1`
-- **DNS Rebinding Protection** - Validates Host header
-- **Same-machine Trusted** - No authentication required for local access
+- 🏠 **Localhost Only** - Binds only to `127.0.0.1`
+- 🛡️ **DNS Rebinding Protection** - Validates Host header
+- ✅ **Same-machine Trusted** - No authentication required for local access
 
-## Requirements
+## 📋 Requirements
 
-- Visual Studio Code 1.85.0 or later
-- Node.js (bundled with VS Code)
+- 💻 Visual Studio Code 1.85.0 or later
+- 🟢 Node.js (bundled with VS Code)
 
-## Contributing
+## 🤝 Contributing
 
 Contributions are welcome! Whether it's bug reports, feature requests, or pull requests - all feedback helps make this extension better.
 
-### Development Setup
+### 🔧 Development Setup
 
 1. Clone the repository
 2. Run `npm install`
 3. Run `npm run build`
 4. Press F5 to launch the Extension Development Host
 
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## Contributors
+## 👥 Contributors
 
 <!-- readme: contributors -start -->
 <!-- readme: contributors -end -->
