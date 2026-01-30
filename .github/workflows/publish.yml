@@ -2,11 +2,6 @@ name: Publish to VS Code Marketplace
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to release (e.g., 1.0.0)'
-        required: true
-        type: string
 
 permissions:
   contents: write
@@ -42,8 +37,9 @@ jobs:
       - name: Set version
         id: version
         run: |
-          npm version ${{ inputs.version }} --no-git-tag-version --allow-same-version
-          echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          VERSION=$(date +'%Y.%m%d').${{ github.run_number }}
+          npm version $VERSION --no-git-tag-version --allow-same-version
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Package VSIX
         run: npx @vscode/vsce package -o CodingWithCalvin.VSC-MCPServer.vsix
