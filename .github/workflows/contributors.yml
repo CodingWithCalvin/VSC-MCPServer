@@ -9,5 +9,5 @@ jobs:
   contributors:
     uses: CodingWithCalvin/.github/.github/workflows/contributors.yml@main
     with:
-      output_format: html
+      output-format: html
     secrets: inherit
