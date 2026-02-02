@@ -30,25 +30,46 @@ A Visual Studio Code extension that exposes an MCP (Model Context Protocol) serv
 
 | Tool | Description |
 |------|-------------|
-| 📂 `vscode_open_folder` | Open a workspace folder |
-| 📋 `vscode_get_open_folders` | Get currently open workspace folder(s) |
-| 🏷️ `vscode_document_symbols` | Get all symbols in a document |
-| 🔍 `vscode_workspace_symbols` | Search symbols across the workspace |
-| 🎯 `vscode_go_to_definition` | Find symbol definitions |
-| 🔗 `vscode_find_references` | Find all references to a symbol |
-| 💡 `vscode_hover_info` | Get type info and documentation |
-| ⚠️ `vscode_diagnostics` | Get errors and warnings |
-| 📞 `vscode_call_hierarchy` | Get incoming/outgoing calls |
-| ✏️ `vscode_completions` | Get code completions at a position |
-| 📝 `vscode_signature_help` | Get function signature help |
-| 🏗️ `vscode_type_hierarchy` | Get type hierarchy information |
-| 🔧 `vscode_code_actions` | Get available code actions/quick fixes |
-| 🎨 `vscode_format_document` | Format an entire document |
-| ✂️ `vscode_format_range` | Format a specific range |
-| 📦 `vscode_organize_imports` | Organize imports in a document |
-| ✏️ `vscode_rename_symbol` | Rename a symbol across the workspace |
-| 🔎 `vscode_workspace_file_search` | Search for files by pattern |
-| 📄 `vscode_workspace_text_search` | Search for text across files |
+| 📂 `open_folder` | Open a workspace folder |
+| 📋 `get_open_folders` | Get currently open workspace folder(s) |
+| 🏷️ `document_symbols` | Get all symbols in a document |
+| 🔍 `workspace_symbols` | Search symbols across the workspace |
+| 🎯 `go_to_definition` | Find symbol definitions |
+| 🔗 `find_references` | Find all references to a symbol |
+| 💡 `hover_info` | Get type info and documentation |
+| ⚠️ `diagnostics` | Get errors and warnings |
+| 📞 `call_hierarchy` | Get incoming/outgoing calls |
+| ✏️ `get_completions` | Get code completions at a position |
+| 📝 `get_signature_help` | Get function signature help |
+| 🏗️ `get_type_hierarchy` | Get type hierarchy information |
+| 🔧 `get_code_actions` | Get available code actions/quick fixes |
+| 🎯 `get_document_highlights` | Find symbol highlights in a document |
+| 🧩 `get_folding_ranges` | Get collapsible regions in a document |
+| 🧷 `get_inlay_hints` | Get inlay hints for a range |
+| 🧠 `get_semantic_tokens` | Get semantic tokens for syntax understanding |
+| 🔎 `get_code_lens` | Get code lens entries for a document |
+| 🔗 `get_document_links` | Get clickable links in a document |
+| 🪄 `get_selection_range` | Get semantic selection ranges |
+| 🎨 `get_document_colors` | Get color information from a document |
+| 🔎 `search_workspace_files` | Search for files by pattern |
+| 📄 `search_workspace_text` | Search for text across files |
+| 🎨 `format_document` | Format an entire document |
+| ✂️ `format_range` | Format a specific range |
+| 📦 `organize_imports` | Organize imports in a document |
+| ✏️ `rename_symbol` | Rename a symbol across the workspace |
+| 🛠️ `apply_code_action` | Apply a specific code action (supports dry-run) |
+| 🧰 `text_editor` | File ops: view/replace/insert/create/undo |
+| 📁 `list_directory` | List directory contents as a tree |
+| 🎯 `focus_editor` | Open a file and focus a specific range |
+| 🐞 `list_debug_sessions` | List active debug sessions |
+| ▶️ `start_debug_session` | Start a debug session from a JSON configuration |
+| 🔄 `restart_debug_session` | Restart a debug session by id |
+| ⏹️ `stop_debug_session` | Stop a debug session by id or stop all |
+| 🧾 `list_vscode_commands` | List available VS Code command ids |
+| 🧪 `execute_vscode_command` | Execute a VS Code command (unsafe; gated) |
+| 🖥️ `execute_command` | Execute a shell command (unsafe; gated) |
+| 📟 `get_terminal_output` | Get output for an `execute_command` process id |
+| 🌐 `preview_url` | Open a URL in VS Code or externally |
 
 ---
 
@@ -92,6 +113,89 @@ Add to your MCP client configuration:
 }
 ```
 
+### ChatGPT Web (ngrok + Google OAuth)
+
+If you want to expose your MCP endpoint to ChatGPT Web, use ngrok as an OAuth-protected proxy in front of the local server.
+
+High-level flow:
+- VS Code extension runs locally: `http://127.0.0.1:4000/mcp`
+- ngrok enforces Google OAuth (Traffic Policy `oauth` action)
+- ngrok forwards requests upstream to your local MCP server
+
+#### Full example (Google OAuth + upstream bearer token)
+
+This example keeps the extension secure by requiring a bearer token, and configures ngrok to:
+1) enforce Google OAuth for end users, and
+2) inject the bearer token when forwarding upstream to the local MCP server.
+
+1) Configure the extension token (VS Code Settings)
+
+Set a strong token in VS Code settings:
+- `codingwithcalvin.mcp.authToken`: `your-long-random-token`
+
+2) Start the MCP server in VS Code
+
+Run `MCP Server: Start`. Confirm locally:
+
+```bash
+curl -sS -H "Authorization: Bearer your-long-random-token" http://127.0.0.1:4000/health
+```
+
+3) Create an ngrok Traffic Policy
+
+Create `policy.yml`:
+
+```yaml
+on_http_request:
+  - actions:
+      - type: oauth
+        config:
+          provider: google
+          allow_cors_preflight: true
+      - type: "add-headers"
+        config:
+          headers:
+            authorization: "Bearer your-long-random-token"
+```
+
+4) Start ngrok to your local MCP server
+
+```bash
+ngrok http 127.0.0.1:4000 --traffic-policy-file=policy.yml
+```
+
+5) Test through the tunnel
+
+Open `https://<your-ngrok-domain>/health` in a browser and complete Google sign-in. You should see:
+
+```json
+{"status":"ok","port":4000}
+```
+
+Your MCP endpoint via ngrok is:
+
+```
+https://<your-ngrok-domain>/mcp
+```
+
+In VS Code, you can also run `MCP Server: Connection Info` to see/copy the ngrok URL if the ngrok local dashboard is available at `http://127.0.0.1:4040`.
+
+#### Custom Google OAuth app (optional)
+
+If you want to use your own Google OAuth client:
+- Create OAuth client credentials in Google Cloud.
+- Set the Redirect/Callback URL to:
+
+```
+https://idp.ngrok.com/oauth2/callback
+```
+
+Then add `client_id` and `client_secret` under the `oauth` action config in `policy.yml` (see ngrok docs).
+
+ngrok docs:
+- `https://ngrok.com/docs/traffic-policy/actions/oauth`
+- `https://ngrok.com/docs/traffic-policy/actions/add-headers`
+
 ### URI Protocol
 
 Launch VS Code and control the MCP server via URI:
@@ -111,6 +215,9 @@ vscode://codingwithcalvin.mcp/open?folder=/path/to/dir  # Open folder and start
 | `codingwithcalvin.mcp.autoStart` | `true` | 🚀 Auto-start server on VS Code launch |
 | `codingwithcalvin.mcp.port` | `4000` | 🔌 MCP server port |
 | `codingwithcalvin.mcp.bindAddress` | `127.0.0.1` | 🔒 Bind address (localhost only) |
+| `codingwithcalvin.mcp.allowRemoteConnections` | `false` | ⚠️ Allow non-local Host/Origin headers (for tunnels like ngrok). Requires `authToken`. |
+| `codingwithcalvin.mcp.authToken` | `""` | 🔑 Optional bearer token. If set, clients must send `Authorization: Bearer <token>`. |
+| `codingwithcalvin.mcp.enableUnsafeTools` | `false` | ⚠️ Enable unsafe tools like `execute_command` and `execute_vscode_command` |
 
 ---
 
@@ -130,6 +237,7 @@ Access these from the Command Palette (Ctrl+Shift+P):
 - 🏠 **Localhost Only** - Binds only to `127.0.0.1`
 - 🛡️ **DNS Rebinding Protection** - Validates Host header
 - ✅ **Same-machine Trusted** - No authentication required for local access
+- ⚠️ **Tunnels/Remote** - If using ngrok, enable `codingwithcalvin.mcp.allowRemoteConnections` and set `codingwithcalvin.mcp.authToken`
 
 ---
 

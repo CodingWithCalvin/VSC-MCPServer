@@ -24,6 +24,7 @@
   "engines": {
     "vscode": "^1.85.0"
   },
+  "enabledApiProposals": ["findTextInFiles"],
   "categories": [
     "Other",
     "Programming Languages"
@@ -61,8 +62,24 @@
         "title": "MCP Server: Restart"
       },
       {
+        "command": "codingwithcalvin.mcp.connectionInfo",
+        "title": "MCP Server: Connection Info"
+      },
+      {
         "command": "codingwithcalvin.mcp.showTools",
         "title": "MCP Server: Show Available Tools"
+      },
+      {
+        "command": "codingwithcalvin.mcp.inspectLmTools",
+        "title": "MCP Server: Inspect vscode.lm.tools"
+      },
+      {
+        "command": "codingwithcalvin.mcp.configureVscodeTools",
+        "title": "MCP Server: Configure VS Code Tools…"
+      },
+      {
+        "command": "codingwithcalvin.mcp.configureDefaultTools",
+        "title": "MCP Server: Configure Built-in Tools…"
       }
     ],
     "configuration": {
@@ -82,6 +99,41 @@
           "type": "string",
           "default": "127.0.0.1",
           "description": "Address to bind the MCP server (localhost only for security)"
+        },
+        "codingwithcalvin.mcp.allowRemoteConnections": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow non-local Host/Origin headers (required for tunnels like ngrok). Requires authToken for safety."
+        },
+        "codingwithcalvin.mcp.authToken": {
+          "type": "string",
+          "default": "",
+          "description": "Optional bearer token for HTTP requests. If set, clients must send: Authorization: Bearer <token>."
+        },
+        "codingwithcalvin.mcp.enableUnsafeTools": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable unsafe tools like execute_command and execute_vscode_command. WARNING: these allow arbitrary command execution."
+        },
+        "codingwithcalvin.mcp.useFindTextInFiles": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use VS Code's built-in findTextInFiles API for search_workspace_text when available (fast). If disabled or unavailable, a slower fallback search is used."
+        },
+        "codingwithcalvin.mcp.autoSaveAfterToolEdits": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically save files to disk after edit-applying tools run (format_document, format_range, organize_imports, rename_symbol, apply_code_action)."
+        },
+        "codingwithcalvin.mcp.defaultTools.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Expose this extension's built-in tools through the MCP server. Configure which tools are exposed via [MCP Server: Configure Built-in Tools…](command:codingwithcalvin.mcp.configureDefaultTools)."
+        },
+        "codingwithcalvin.mcp.vscodeTools.enabled": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Expose VS Code tools (vscode.lm.tools, including tools coming from VS Code MCP servers / extensions) through this MCP server. Select tools via [MCP Server: Configure VS Code Tools…](command:codingwithcalvin.mcp.configureVscodeTools)."
         }
       }
     }

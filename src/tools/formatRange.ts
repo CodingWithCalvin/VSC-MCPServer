@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { rangeToJSON, ensureDocumentOpen } from '../adapters/vscodeAdapter';
+import { getConfiguration } from '../config/settings';
 
 export const formatRangeSchema = z.object({
     uri: z.string().describe('File URI or absolute file path'),
@@ -26,17 +27,20 @@ export interface TextEdit {
 
 export async function formatRange(
     params: z.infer<typeof formatRangeSchema>
-): Promise<{ success: boolean; edits?: TextEdit[]; message?: string }> {
+): Promise<{
+    success: boolean;
+    applied?: boolean;
+    saved?: boolean;
+    edits?: TextEdit[];
+    message?: string;
+}> {
     // Handle both file:// URIs and plain paths
-    let uri: vscode.Uri;
-    if (params.uri.startsWith('file://')) {
-        uri = vscode.Uri.parse(params.uri);
-    } else {
-        uri = vscode.Uri.file(params.uri);
-    }
+    const uri = params.uri.startsWith('file://')
+        ? vscode.Uri.parse(params.uri)
+        : vscode.Uri.file(params.uri);
 
     // Ensure document is open
-    await ensureDocumentOpen(uri);
+    const document = await ensureDocumentOpen(uri);
 
     const range = new vscode.Range(
         new vscode.Position(params.startLine, params.startCharacter),
@@ -69,6 +73,8 @@ export async function formatRange(
     if (params.dryRun) {
         return {
             success: true,
+            applied: false,
+            saved: false,
             edits: textEdits,
             message: `Dry-run: ${edits.length} formatting change(s) would be applied`,
         };
@@ -80,16 +86,26 @@ export async function formatRange(
 
     const applied = await vscode.workspace.applyEdit(workspaceEdit);
 
-    if (applied) {
-        return {
-            success: true,
-            edits: textEdits,
-            message: `Successfully formatted range with ${edits.length} change(s)`,
-        };
-    } else {
+    if (!applied) {
         return {
             success: false,
             message: 'Failed to apply formatting changes',
         };
     }
+
+    const config = getConfiguration();
+    let saved = false;
+    if (config.autoSaveAfterToolEdits) {
+        saved = await document.save();
+    }
+
+    return {
+        success: true,
+        applied: true,
+        saved,
+        edits: textEdits,
+        message: `Successfully formatted range with ${edits.length} change(s)${
+            config.autoSaveAfterToolEdits ? (saved ? ' (saved)' : ' (save failed)') : ''
+        }`,
+    };
 }

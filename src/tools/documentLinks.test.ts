@@ -7,7 +7,15 @@ vi.mock('vscode', async () => {
 });
 
 import { getDocumentLinks, documentLinksSchema } from './documentLinks';
-import { mockVscode, resetMocks, MockUri, MockRange, MockPosition, MockDocumentLink } from '../test/helpers/mockVscode';
+import {
+    mockVscode,
+    resetMocks,
+    MockUri,
+    MockRange,
+    MockPosition,
+    MockDocumentLink,
+    MockTextDocument,
+} from '../test/helpers/mockVscode';
 
 describe('Document Links Tool', () => {
     beforeEach(() => {
@@ -43,11 +51,13 @@ describe('Document Links Tool', () => {
                 ),
             ];
 
+            mockVscode.commands.getCommands.mockResolvedValue(['vscode.executeDocumentLinkProvider']);
             mockVscode.commands.executeCommand.mockResolvedValue(mockLinks);
 
             const result = await getDocumentLinks({ uri: '/test/file.ts' });
 
             expect(result.links).toHaveLength(2);
+            expect(result.provider).toBe('vscode');
             expect(result.links[0].target).toContain('other-file.ts');
             expect(result.links[0].tooltip).toBe('Go to file');
             expect(result.links[1].target).toContain('example.com');
@@ -62,16 +72,19 @@ describe('Document Links Tool', () => {
                 ),
             ];
 
+            mockVscode.commands.getCommands.mockResolvedValue(['vscode.executeDocumentLinkProvider']);
             mockVscode.commands.executeCommand.mockResolvedValue(mockLinks);
 
             const result = await getDocumentLinks({ uri: '/test/file.ts' });
 
             expect(result.links).toHaveLength(1);
+            expect(result.provider).toBe('vscode');
             expect(result.links[0].target).toBeUndefined();
             expect(result.links[0].tooltip).toBeUndefined();
         });
 
         it('should handle file:// URIs', async () => {
+            mockVscode.commands.getCommands.mockResolvedValue(['vscode.executeDocumentLinkProvider']);
             mockVscode.commands.executeCommand.mockResolvedValue([]);
 
             await getDocumentLinks({ uri: 'file:///test/file.ts' });
@@ -83,11 +96,34 @@ describe('Document Links Tool', () => {
         });
 
         it('should return empty array when no links available', async () => {
+            mockVscode.commands.getCommands.mockResolvedValue(['vscode.executeDocumentLinkProvider']);
             mockVscode.commands.executeCommand.mockResolvedValue(null);
 
             const result = await getDocumentLinks({ uri: '/test/file.ts' });
 
             expect(result.links).toEqual([]);
+            expect(result.provider).toBe('vscode');
+        });
+
+        it('falls back to a simple parser when the VS Code provider command is unavailable', async () => {
+            mockVscode.commands.getCommands.mockResolvedValue([]);
+            mockVscode.workspace.openTextDocument.mockImplementation((uri: MockUri) => {
+                return Promise.resolve(
+                    new MockTextDocument(
+                        uri,
+                        'markdown',
+                        1,
+                        'See https://example.com and [readme](README.md).'
+                    )
+                );
+            });
+
+            const result = await getDocumentLinks({ uri: '/test/file.md' });
+
+            expect(result.provider).toBe('fallback');
+            expect(result.links.length).toBeGreaterThanOrEqual(2);
+            expect(result.links.some((l) => (l.target || '').includes('example.com'))).toBe(true);
+            expect(result.links.some((l) => (l.target || '').includes('README.md'))).toBe(true);
         });
     });
 });

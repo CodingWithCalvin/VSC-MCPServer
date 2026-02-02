@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import * as vscode from 'vscode';
+import { MCPServerConfig } from '../config/settings';
 
 // Import all tool modules
 import { openFolder, getOpenFolders, openFolderSchema, getOpenFoldersSchema } from './workspace';
@@ -28,16 +30,38 @@ import { formatRange, formatRangeSchema } from './formatRange';
 import { organizeImports, organizeImportsSchema } from './organizeImports';
 import { renameSymbol, renameSymbolSchema } from './renameSymbol';
 import { applyCodeAction, applyCodeActionSchema } from './applyCodeAction';
+import { previewUrl, previewUrlSchema } from './previewUrl';
+import { listDirectory, listDirectorySchema } from './listDirectory';
+import { focusEditor, focusEditorSchema } from './focusEditor';
+import { textEditor, textEditorSchema } from './textEditor';
+import {
+    executeCommand,
+    executeCommandSchema,
+    getTerminalOutput,
+    getTerminalOutputSchema,
+} from './commandExecution';
+import {
+    listVSCodeCommands,
+    listVSCodeCommandsSchema,
+    executeVSCodeCommand,
+    executeVSCodeCommandSchema,
+} from './vscodeCommands';
+import {
+    listDebugSessions,
+    listDebugSessionsSchema,
+    startDebugSession,
+    startDebugSessionSchema,
+    restartDebugSession,
+    restartDebugSessionSchema,
+    stopDebugSession,
+    stopDebugSessionSchema,
+} from './debugSessions';
 
 // Tool definition type for MCP
 interface ToolDefinition {
     name: string;
     description: string;
-    inputSchema: {
-        type: 'object';
-        properties: Record<string, unknown>;
-        required?: string[];
-    };
+    inputSchema: Record<string, unknown>;
 }
 
 // Tool registry
@@ -56,13 +80,17 @@ function zodToJsonSchema(schema: z.ZodObject<z.ZodRawShape>): ToolDefinition['in
         const zodType = value as z.ZodTypeAny;
         const description = zodType.description;
 
-        // Handle optional types
+        // Handle optional / defaulted types
         let innerType = zodType;
         let isOptional = false;
 
-        if (zodType instanceof z.ZodOptional || zodType instanceof z.ZodDefault) {
+        while (innerType instanceof z.ZodOptional || innerType instanceof z.ZodDefault) {
             isOptional = true;
-            innerType = zodType instanceof z.ZodOptional ? zodType.unwrap() : zodType._def.innerType;
+            if (innerType instanceof z.ZodOptional) {
+                innerType = innerType.unwrap();
+            } else {
+                innerType = innerType._def.innerType as z.ZodTypeAny;
+            }
         }
 
         // Convert zod type to JSON schema type
@@ -99,6 +127,72 @@ function zodToJsonSchema(schema: z.ZodObject<z.ZodRawShape>): ToolDefinition['in
 }
 
 const tools: Map<string, ToolEntry> = new Map();
+
+const VSCODE_TOOLS_NAMESPACE = 'vscode';
+const VSCODE_TOOLS_REQUIRE_OBJECT_SCHEMA = true;
+const DEFAULT_TOOLS_NAMESPACE = 'vsc';
+
+function shouldExposeLanguageModelTool(
+    tool: vscode.LanguageModelToolInformation,
+    config: MCPServerConfig
+): boolean {
+    if (!config.enableVSCodeTools) {
+        return false;
+    }
+
+    const schema = tool.inputSchema as { type?: unknown } | undefined;
+    const schemaType = typeof schema?.type === 'string' ? schema.type : undefined;
+
+    if (VSCODE_TOOLS_REQUIRE_OBJECT_SCHEMA && schemaType !== 'object') {
+        return false;
+    }
+
+    return config.vscodeToolsAllowedNames.includes(tool.name);
+}
+
+function getLanguageModelToolNamespace(config: MCPServerConfig): string {
+    void config;
+    return VSCODE_TOOLS_NAMESPACE;
+}
+
+function getLanguageModelToolExposedName(toolName: string, config: MCPServerConfig): string {
+    return `${getLanguageModelToolNamespace(config)}.${toolName}`;
+}
+
+function tryParseLanguageModelToolName(
+    exposedName: string,
+    config: MCPServerConfig
+): string | undefined {
+    const ns = `${getLanguageModelToolNamespace(config)}.`;
+    if (!exposedName.startsWith(ns)) {
+        return undefined;
+    }
+    return exposedName.slice(ns.length);
+}
+
+function getDefaultToolExposedName(toolName: string): string {
+    return `${DEFAULT_TOOLS_NAMESPACE}.${toolName}`;
+}
+
+function tryParseDefaultToolName(exposedName: string): string | undefined {
+    const ns = `${DEFAULT_TOOLS_NAMESPACE}.`;
+    if (!exposedName.startsWith(ns)) {
+        return undefined;
+    }
+    return exposedName.slice(ns.length);
+}
+
+function shouldExposeDefaultTool(toolName: string, config: MCPServerConfig): boolean {
+    if (config.enableDefaultTools === false) {
+        return false;
+    }
+
+    if (!config.defaultToolsAllowedConfigured) {
+        return true;
+    }
+
+    return config.defaultToolsAllowedNames.includes(toolName);
+}
 
 // Register all tools
 function registerTool(
@@ -317,15 +411,188 @@ registerTool(
     applyCodeAction as (params: Record<string, unknown>) => Promise<unknown>
 );
 
+// Workflow/editor tools
+registerTool(
+    'execute_command',
+    'Execute a shell command (unsafe; gated by configuration)',
+    executeCommandSchema,
+    executeCommand as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'get_terminal_output',
+    'Get output for a previously started execute_command process id',
+    getTerminalOutputSchema,
+    getTerminalOutput as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'preview_url',
+    'Open a URL in VS Code (Simple Browser) or externally',
+    previewUrlSchema,
+    previewUrl as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'text_editor',
+    'Basic file operations: view, replace, insert, create, undo',
+    textEditorSchema,
+    textEditor as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'list_directory',
+    'List directory contents as a (bounded) tree; supports depth/entry caps and excludes',
+    listDirectorySchema,
+    listDirectory as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'focus_editor',
+    'Open a file and focus a specific range in the editor',
+    focusEditorSchema,
+    focusEditor as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'list_debug_sessions',
+    'List active debug sessions',
+    listDebugSessionsSchema,
+    listDebugSessions as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'start_debug_session',
+    'Start a new debug session from a JSON debug configuration',
+    startDebugSessionSchema,
+    startDebugSession as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'restart_debug_session',
+    'Restart a running debug session by id',
+    restartDebugSessionSchema,
+    restartDebugSession as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'stop_debug_session',
+    'Stop a debug session by id or stop all sessions',
+    stopDebugSessionSchema,
+    stopDebugSession as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'list_vscode_commands',
+    'List available VS Code command ids',
+    listVSCodeCommandsSchema,
+    listVSCodeCommands as (params: Record<string, unknown>) => Promise<unknown>
+);
+
+registerTool(
+    'execute_vscode_command',
+    'Execute a VS Code command (unsafe; gated by configuration)',
+    executeVSCodeCommandSchema,
+    executeVSCodeCommand as (params: Record<string, unknown>) => Promise<unknown>
+);
+
 // Export functions
-export function getAllTools(): ToolDefinition[] {
-    return Array.from(tools.values()).map((entry) => entry.definition);
+export function getAllTools(config?: MCPServerConfig): ToolDefinition[] {
+    const builtInTools = Array.from(tools.values()).map((entry) => entry.definition);
+
+    if (!config) {
+        return builtInTools;
+    }
+
+    const enabledLocalTools = builtInTools
+        .filter((tool) => shouldExposeDefaultTool(tool.name, config))
+        .map((tool) => ({
+            ...tool,
+            name: getDefaultToolExposedName(tool.name),
+        }));
+
+    if (!config.enableVSCodeTools) {
+        return enabledLocalTools;
+    }
+
+    const lmTools = vscode.lm?.tools ? Array.from(vscode.lm.tools) : [];
+    const exposedLmTools: ToolDefinition[] = [];
+
+    for (const tool of lmTools) {
+        if (!shouldExposeLanguageModelTool(tool, config)) {
+            continue;
+        }
+
+        const inputSchema =
+            tool.inputSchema && typeof tool.inputSchema === 'object'
+                ? (tool.inputSchema as Record<string, unknown>)
+                : { type: 'object', properties: {} };
+
+        exposedLmTools.push({
+            name: getLanguageModelToolExposedName(tool.name, config),
+            description: tool.description || `vscode.lm tool: ${tool.name}`,
+            inputSchema,
+        });
+    }
+
+    return [...enabledLocalTools, ...exposedLmTools];
 }
 
 export async function callTool(
     name: string,
-    params: Record<string, unknown>
+    params: Record<string, unknown>,
+    config?: MCPServerConfig
 ): Promise<unknown> {
+    if (config) {
+        const defaultName = tryParseDefaultToolName(name);
+        if (defaultName) {
+            if (!shouldExposeDefaultTool(defaultName, config)) {
+                throw new Error(`Built-in tool is not exposed: ${defaultName}`);
+            }
+
+            const entry = tools.get(defaultName);
+            if (!entry) {
+                throw new Error(`Unknown tool: ${defaultName}`);
+            }
+
+            const validatedParams = entry.schema.parse(params);
+            return entry.handler(validatedParams);
+        }
+
+        const lmName = tryParseLanguageModelToolName(name, config);
+        if (lmName) {
+            if (!vscode.lm?.tools) {
+                throw new Error('vscode.lm.tools is not available');
+            }
+
+            const lmTool = Array.from(vscode.lm.tools).find((t) => t.name === lmName);
+            if (!lmTool) {
+                throw new Error(`Unknown vscode.lm tool: ${lmName}`);
+            }
+
+            if (!shouldExposeLanguageModelTool(lmTool, config)) {
+                throw new Error(`vscode.lm tool is not exposed: ${lmName}`);
+            }
+
+            const result = await vscode.lm.invokeTool(lmName, {
+                input: params,
+                toolInvocationToken: undefined,
+            });
+
+            return result;
+        }
+
+        // Backward compatibility: allow legacy un-namespaced built-in tool names,
+        // but still enforce the allowlist when configured.
+        if (tools.has(name) && !shouldExposeDefaultTool(name, config)) {
+            throw new Error(`Built-in tool is not exposed: ${name}`);
+        }
+    }
+
+    if (config && config.enableDefaultTools === false) {
+        throw new Error('This MCP server is configured to not expose built-in tools.');
+    }
+
     const entry = tools.get(name);
 
     if (!entry) {
@@ -337,4 +604,10 @@ export async function callTool(
 
     // Call the handler
     return entry.handler(validatedParams);
+}
+
+export function getBuiltInToolsCatalog(): { name: string; description: string }[] {
+    return Array.from(tools.values())
+        .map((entry) => ({ name: entry.definition.name, description: entry.definition.description }))
+        .sort((a, b) => a.name.localeCompare(b.name));
 }

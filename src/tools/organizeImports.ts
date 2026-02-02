@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { rangeToJSON, ensureDocumentOpen } from '../adapters/vscodeAdapter';
+import { getConfiguration } from '../config/settings';
+import { saveUris } from '../utils/autoSave';
 
 export const organizeImportsSchema = z.object({
     uri: z.string().describe('File URI or absolute file path'),
@@ -22,14 +24,17 @@ export interface TextEdit {
 
 export async function organizeImports(
     params: z.infer<typeof organizeImportsSchema>
-): Promise<{ success: boolean; edits?: TextEdit[]; message?: string }> {
+): Promise<{
+    success: boolean;
+    applied?: boolean;
+    saved?: boolean;
+    edits?: TextEdit[];
+    message?: string;
+}> {
     // Handle both file:// URIs and plain paths
-    let uri: vscode.Uri;
-    if (params.uri.startsWith('file://')) {
-        uri = vscode.Uri.parse(params.uri);
-    } else {
-        uri = vscode.Uri.file(params.uri);
-    }
+    const uri = params.uri.startsWith('file://')
+        ? vscode.Uri.parse(params.uri)
+        : vscode.Uri.file(params.uri);
 
     // Ensure document is open
     await ensureDocumentOpen(uri);
@@ -43,7 +48,13 @@ export async function organizeImports(
 
     const codeActions = await vscode.commands.executeCommand<
         (vscode.Command | vscode.CodeAction)[]
-    >('vscode.executeCodeActionProvider', uri, fullRange, vscode.CodeActionKind.SourceOrganizeImports);
+    >(
+        'vscode.executeCodeActionProvider',
+        uri,
+        fullRange,
+        vscode.CodeActionKind.SourceOrganizeImports.value,
+        1
+    );
 
     if (!codeActions || codeActions.length === 0) {
         return {
@@ -94,6 +105,8 @@ export async function organizeImports(
     if (params.dryRun) {
         return {
             success: true,
+            applied: false,
+            saved: false,
             edits: allEdits,
             message: `Dry-run: ${allEdits.length} import change(s) would be applied`,
         };
@@ -102,16 +115,27 @@ export async function organizeImports(
     // Apply the edits
     const applied = await vscode.workspace.applyEdit(workspaceEdit);
 
-    if (applied) {
-        return {
-            success: true,
-            edits: allEdits,
-            message: `Successfully organized imports with ${allEdits.length} change(s)`,
-        };
-    } else {
+    if (!applied) {
         return {
             success: false,
             message: 'Failed to apply import changes',
         };
     }
+
+    const config = getConfiguration();
+    let saved = false;
+    if (config.autoSaveAfterToolEdits) {
+        const result = await saveUris(entries.map(([u]) => u));
+        saved = result.failedUris.length === 0;
+    }
+
+    return {
+        success: true,
+        applied: true,
+        saved,
+        edits: allEdits,
+        message: `Successfully organized imports with ${allEdits.length} change(s)${
+            config.autoSaveAfterToolEdits ? (saved ? ' (saved)' : ' (save failed)') : ''
+        }`,
+    };
 }
