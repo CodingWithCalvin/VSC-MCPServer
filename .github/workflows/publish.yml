@@ -10,6 +10,4 @@ jobs:
       extension-name: VSC-MCPServer
       display-name: "VSC as MCP"
       marketplace-id: CodingWithCalvin.VSC-MCPServer
-      description: "Supercharge your AI coding assistants with VS Code's powerful language intelligence!"
-      hashtags: "#mcp #ai #claude"
     secrets: inherit
