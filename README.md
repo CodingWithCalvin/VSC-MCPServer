@@ -17,21 +17,6 @@
   </a>
 </p>
 
-<p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.VSC-MCPServer">
-    <img src="https://img.shields.io/visual-studio-marketplace/v/CodingWithCalvin.VSC-MCPServer?style=for-the-badge" alt="Marketplace Version">
-  </a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.VSC-MCPServer">
-    <img src="https://img.shields.io/visual-studio-marketplace/i/CodingWithCalvin.VSC-MCPServer?style=for-the-badge" alt="Marketplace Installations">
-  </a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.VSC-MCPServer">
-    <img src="https://img.shields.io/visual-studio-marketplace/d/CodingWithCalvin.VSC-MCPServer?style=for-the-badge" alt="Marketplace Downloads">
-  </a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=CodingWithCalvin.VSC-MCPServer">
-    <img src="https://img.shields.io/visual-studio-marketplace/r/CodingWithCalvin.VSC-MCPServer?style=for-the-badge" alt="Marketplace Rating">
-  </a>
-</p>
-
 ---
 
 A Visual Studio Code extension that exposes an MCP (Model Context Protocol) server, giving AI tools like Claude, Cursor, and others direct access to VS Code's semantic code understanding capabilities - go-to-definition, find references, completions, diagnostics, and so much more!
