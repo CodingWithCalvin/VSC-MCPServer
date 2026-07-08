@@ -147,7 +147,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 👥 Contributors
 
 <!-- readme: contributors -start -->
-<a href="https://github.com/CalvinAllen"><img src="https://avatars.githubusercontent.com/u/41448698?v=4&s=64" width="64" height="64" align="left" alt="CalvinAllen"></a> <br clear="all">
+<a href="https://github.com/CalvinAllen"><img src="https://avatars.githubusercontent.com/u/41448698?v=4&s=64" width="64" height="64" align="left" alt="CalvinAllen"></a> <a href="https://github.com/mining-ua"><img src="https://avatars.githubusercontent.com/u/276555145?v=4&s=64" width="64" height="64" align="left" alt="mining-ua"></a> <br clear="all">
 <!-- readme: contributors -end -->
 
 ---
