@@ -108,22 +108,42 @@ export class MCPServer {
         });
     }
 
+    // A JSON-RPC request is a notification when it omits the `id` member.
+    // Notifications must not receive a JSON-RPC response body.
+    private static isNotification(body: unknown): boolean {
+        return (
+            !!body &&
+            typeof body === 'object' &&
+            !Array.isArray(body) &&
+            !('id' in body)
+        );
+    }
+
     private setupRoutes(): void {
         // Health check endpoint
         this.app.get('/health', (req: Request, res: Response) => {
             res.json({ status: 'ok', port: this.actualPort });
         });
 
+        // Keep GET /mcp reachable for clients that probe transport
+        // capabilities before issuing a POST (e.g. JetBrains Rider).
+        this.app.get('/mcp', (req: Request, res: Response) => {
+            res.json({ status: 'ok', transport: 'jsonrpc-http', endpoint: '/mcp' });
+        });
+
         // MCP endpoint - simplified JSON-RPC over HTTP
         this.app.post('/mcp', async (req: Request, res: Response) => {
-            try {
-                const { method, params, id } = req.body;
+            const notification = MCPServer.isNotification(req.body);
+            // Preserve the request `id` (including 0) for responses/errors.
+            const id = req.body?.id ?? null;
 
-                if (method === 'initialize') {
-                    res.json({
-                        jsonrpc: '2.0',
-                        id,
-                        result: {
+            try {
+                const { method, params } = req.body ?? {};
+                let result: unknown;
+
+                switch (method) {
+                    case 'initialize':
+                        result = {
                             protocolVersion: '2024-11-05',
                             capabilities: {
                                 tools: {},
@@ -132,52 +152,57 @@ export class MCPServer {
                                 name: 'vscode-mcp',
                                 version: '0.1.0',
                             },
-                        },
-                    });
-                    return;
-                }
+                        };
+                        break;
 
-                if (method === 'tools/list') {
-                    const tools = getAllTools();
-                    res.json({
-                        jsonrpc: '2.0',
-                        id,
-                        result: { tools },
-                    });
-                    return;
-                }
+                    case 'tools/list':
+                        result = { tools: getAllTools() };
+                        break;
 
-                if (method === 'tools/call') {
-                    const { name, arguments: args } = params;
-                    const result = await callTool(name, args || {});
-                    res.json({
-                        jsonrpc: '2.0',
-                        id,
-                        result: {
+                    case 'tools/call': {
+                        const { name, arguments: args } = params ?? {};
+                        const toolResult = await callTool(name, args ?? {});
+                        result = {
                             content: [
                                 {
                                     type: 'text',
-                                    text: JSON.stringify(result, null, 2),
+                                    text: JSON.stringify(toolResult, null, 2),
                                 },
                             ],
-                        },
-                    });
-                    return;
+                        };
+                        break;
+                    }
+
+                    default:
+                        if (notification) {
+                            res.status(202).end();
+                            return;
+                        }
+                        res.json({
+                            jsonrpc: '2.0',
+                            id,
+                            error: {
+                                code: -32601,
+                                message: `Method not found: ${method}`,
+                            },
+                        });
+                        return;
                 }
 
-                res.json({
-                    jsonrpc: '2.0',
-                    id,
-                    error: {
-                        code: -32601,
-                        message: `Method not found: ${method}`,
-                    },
-                });
+                if (notification) {
+                    res.status(202).end();
+                    return;
+                }
+                res.json({ jsonrpc: '2.0', id, result });
             } catch (error) {
+                if (notification) {
+                    res.status(202).end();
+                    return;
+                }
                 const errorMessage = error instanceof Error ? error.message : String(error);
                 res.json({
                     jsonrpc: '2.0',
-                    id: req.body?.id,
+                    id,
                     error: {
                         code: -32603,
                         message: errorMessage,
